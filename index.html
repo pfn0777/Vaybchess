@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vaybchess</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#1e2429;--card:#252d35;--card2:#2e3a44;--text:#e8eaed;--sub:#8fa3b1;--accent:#81b64c;--accent2:#f6c90e}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow-x:hidden}
+.wrap{width:100%;max-width:420px;padding:24px;display:flex;flex-direction:column;align-items:center}
+.logo-circle{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#4a6274,#8fa3b1);display:flex;align-items:center;justify-content:center;font-size:42px;margin-bottom:14px;box-shadow:0 4px 24px rgba(0,0,0,.45)}
+.logo-title{font-size:30px;font-weight:800;letter-spacing:1px;margin-bottom:4px}
+.greeting{color:var(--sub);font-size:15px;margin-bottom:30px;text-align:center}
+.greeting b{color:var(--text)}
+.game-card{width:100%;background:var(--card);border-radius:18px;padding:20px;margin-bottom:14px;display:flex;align-items:center;gap:16px;cursor:pointer;border:2px solid transparent;transition:all .2s;text-decoration:none;color:var(--text)}
+.game-card:hover,.game-card:active{border-color:var(--accent);transform:translateY(-2px)}
+.game-card.checkers:hover,.game-card.checkers:active{border-color:var(--accent2)}
+.gc-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0}
+.gc-icon.chess{background:rgba(129,182,76,.15)}
+.gc-icon.checkers{background:rgba(246,201,14,.12)}
+.gc-info{flex:1}
+.gc-title{font-size:18px;font-weight:700;margin-bottom:3px}
+.gc-sub{font-size:13px;color:var(--sub)}
+.gc-arrow{color:var(--sub);font-size:20px}
+.lang-row{display:flex;gap:8px;margin-top:18px}
+.lang-btn{padding:8px 18px;border-radius:20px;border:2px solid var(--card2);background:transparent;color:var(--sub);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
+.lang-btn.active{border-color:var(--accent);color:var(--accent)}
+.footer{margin-top:26px;color:var(--sub);font-size:11px;opacity:.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo-circle">♟</div>
+  <div class="logo-title">Vaybchess</div>
+  <div class="greeting" id="greeting">O'yiningni tanla</div>
+
+  <a class="game-card" href="chess.html">
+    <div class="gc-icon chess">♞</div>
+    <div class="gc-info">
+      <div class="gc-title" id="chessTitle">Shaxmat</div>
+      <div class="gc-sub" id="chessSub">AI (500–1800 Elo) yoki do'st bilan</div>
+    </div>
+    <div class="gc-arrow">›</div>
+  </a>
+
+  <a class="game-card checkers" href="checkers.html">
+    <div class="gc-icon checkers">⬤</div>
+    <div class="gc-info">
+      <div class="gc-title" id="checkersTitle">Shashka</div>
+      <div class="gc-sub" id="checkersSub">AI yoki do'st bilan o'ynash</div>
+    </div>
+    <div class="gc-arrow">›</div>
+  </a>
+
+  <div class="lang-row">
+    <button class="lang-btn" onclick="setLang('uz')">UZ</button>
+    <button class="lang-btn" onclick="setLang('ru')">RU</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+  </div>
+  <div class="footer">Vaybchess Mini App</div>
+</div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+
+const i18n = {
+  uz:{hi:"Salom", pick:"O'yiningni tanla", chess:"Shaxmat", chessSub:"AI (500–1800 Elo) yoki do'st bilan", checkers:"Shashka", checkersSub:"AI yoki do'st bilan o'ynash"},
+  ru:{hi:"Привет", pick:"Выбери игру", chess:"Шахматы", chessSub:"ИИ (500–1800 Эло) или с другом", checkers:"Шашки", checkersSub:"ИИ или игра с другом"},
+  en:{hi:"Hi", pick:"Pick your game", chess:"Chess", chessSub:"AI (500–1800 Elo) or with a friend", checkers:"Checkers", checkersSub:"Play vs AI or a friend"}
+};
+
+let lang = localStorage.getItem('vayb_lang');
+if(!lang){
+  const lc = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code;
+  lang = lc && lc.startsWith('ru') ? 'ru' : lc && lc.startsWith('en') ? 'en' : 'uz';
+  localStorage.setItem('vayb_lang', lang);
+}
+
+function setLang(l){
+  lang = l;
+  localStorage.setItem('vayb_lang', l);
+  apply();
+}
+
+function apply(){
+  const T = i18n[lang] || i18n.uz;
+  const name = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name;
+  document.getElementById('greeting').innerHTML = name ? T.hi + ', <b>' + name.replace(/</g,'&lt;') + '</b>! ' + T.pick : T.pick;
+  document.getElementById('chessTitle').textContent = T.chess;
+  document.getElementById('chessSub').textContent = T.chessSub;
+  document.getElementById('checkersTitle').textContent = T.checkers;
+  document.getElementById('checkersSub').textContent = T.checkersSub;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.textContent.toLowerCase()===lang));
+}
+
+if(tg){
+  try{ tg.ready(); tg.expand(); }catch(e){}
+  try{ tg.setHeaderColor && tg.setHeaderColor('#1e2429'); tg.setBackgroundColor && tg.setBackgroundColor('#1e2429'); }catch(e){}
+  try{ tg.BackButton.hide(); }catch(e){}
+}
+apply();
+</script>
+</body>
+</html>
