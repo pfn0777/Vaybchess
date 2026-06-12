@@ -101,6 +101,16 @@ if(tg){
   try{ tg.BackButton.hide(); }catch(e){}
 }
 apply();
+
+// Share link orqali xona kodi kelgan bo'lsa — to'g'ridan-to'g'ri shaxmatga o'tkazish
+try{
+  let sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+           new URLSearchParams(location.search).get('tgWebAppStartParam') || '';
+  sp = sp.trim().toUpperCase();
+  if(/^[A-Z2-9]{6}$/.test(sp)){
+    location.replace('chess.html?tgWebAppStartParam=' + sp);
+  }
+}catch(e){}
 </script>
 </body>
 </html>

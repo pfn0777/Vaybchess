@@ -1441,6 +1441,7 @@ function joinRoom(){
 }
 
 function startOnlineGame(){
+  gameMode = 'online';
   game = new Chess();
   playerSeconds = 300;
   opponentSeconds = 300;
@@ -1514,7 +1515,7 @@ function setupPresence(){
 
 function shareRoom(){
   if(!roomCode) return;
-  const url = location.origin + location.pathname;
+  const url = 'https://t.me/vaybchess_bot/play?startapp=' + roomCode;
   const text = t('inviteText').replace('{code}', roomCode);
   const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
   if(tg && tg.openTelegramLink){ try{ tg.openTelegramLink(shareUrl); return; }catch(e){} }
@@ -1541,6 +1542,7 @@ function cleanupOnline(){
     db.ref('games/'+roomCode).off();
     if(myRole){ try{ db.ref('games/'+roomCode+'/presence/'+myRole).set('offline'); }catch(e){} }
   }
+  if(gameMode==='online') gameMode = null;
   roomCode = null;
   myRole = null;
   onlineConnected = false;
@@ -1572,6 +1574,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
   markSelectedElo();
   document.getElementById('toggleSound').classList.toggle('on', soundOn);
   if(tg){ try{ tg.BackButton.show(); }catch(e){} }
+  // Auto-join: share link orqali kelgan bo'lsa (t.me/vaybchess_bot/play?startapp=KOD)
+  try{
+    let sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+             new URLSearchParams(location.search).get('tgWebAppStartParam') || '';
+    sp = sp.trim().toUpperCase();
+    if(/^[A-Z2-9]{6}$/.test(sp)){
+      showScreen('onlineScreen');
+      document.getElementById('joinCodeInput').value = sp;
+      joinRoom();
+    }
+  }catch(e){}
   // Try to preload Stockfish quietly
   try {
     const sf = document.createElement('script');
