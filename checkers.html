@@ -532,7 +532,16 @@ let moveCount = 0;
 let lastMoves = []; // [{fromRow,fromCol,toRow,toCol}]
 let boardHistory = []; // for undo
 let gameActive = false;
-let aiDepths = {easy:1, medium:4, hard:7};
+// Har daraja uchun:
+//   maxDepth   = iterativ chuqurlashtirish yuqori chegarasi
+//   maxTime    = bitta yurishga ajratilgan vaqt (ms) — qidiruvni CHEGARALAYDI (muzlash yo'q)
+//   randomness = eng yaxshi o'rniga top-N dan tasodifiy tanlash ehtimoli (Easy xato qiladi)
+//   topN       = nechta eng yaxshi yurish orasidan tanlanadi
+let aiLevels = {
+  easy:   { maxDepth: 3,  maxTime: 200,  randomness: .35, topN: 3 },
+  medium: { maxDepth: 6,  maxTime: 600,  randomness: .08, topN: 2 },
+  hard:   { maxDepth: 12, maxTime: 1200, randomness: 0,   topN: 1 }
+};
 let noCaptureCount = 0; // durang qoidasi: 60 yarim-yurish (30 yurish) olishsiz
 
 // Timers
@@ -1081,10 +1090,12 @@ function resignGame(){
 
 // ===================== AI =====================
 function doAIMove(){
-  const thinkTime = 300 + Math.random()*500;
+  const cfg = aiLevels[selectedLevel] || aiLevels.easy;
+  // Qisqa kechikish — "o'ylayapti" indikatori chizilishi uchun (qidiruv vaqti cfg.maxTime bilan chegaralangan)
+  const thinkTime = 250 + Math.random()*250;
   setTimeout(()=>{
     if(!gameActive||currentTurn!==aiColor) return;
-    const move = getBestMove(board,aiColor,aiDepths[selectedLevel]);
+    const move = getBestMove(board, aiColor, cfg);
     if(move){
       executeMove(move);
     } else {
@@ -1093,20 +1104,71 @@ function doAIMove(){
   }, thinkTime);
 }
 
-function getBestMove(b, color, depth){
-  const moves = getAllMovesForColor(b,color);
-  if(moves.length===0) return null;
-  let best=null, bestVal=-Infinity;
-  const alpha=-Infinity, beta=Infinity;
-  for(const m of moves){
-    const nb=applyMove(b,m);
-    const val=minimax(nb, depth-1, -Infinity, Infinity, false, color);
-    if(val>bestVal){bestVal=val;best=m;}
-  }
-  return best;
+// Qidiruv vaqt tugaganini bildiruvchi maxsus signal
+const SEARCH_ABORT = {abort:true};
+
+// Yurishlarni tartiblash — capture'lar va kuchli yurishlar avval (alpha-beta tezroq kesadi)
+function orderMoves(b, moves, color){
+  return moves
+    .map(m=>{
+      const caps = (m.captures && m.captures.length) || 0;
+      // Tez baho: capture soni asosiy, keyin pozitsiya bahosi
+      const quick = caps*100 + evaluate(applyMove(b,m), color);
+      return {m, quick};
+    })
+    .sort((a,bb)=>bb.quick-a.quick)
+    .map(x=>x.m);
 }
 
-function minimax(b, depth, alpha, beta, isMax, aiColor){
+// Iterativ chuqurlashtirish + vaqt byudjeti.
+// cfg: {maxDepth, maxTime, randomness, topN}
+function getBestMove(b, color, cfg){
+  let moves = getAllMovesForColor(b,color);
+  if(moves.length===0) return null;
+  if(moves.length===1) return moves[0];        // majburiy yurish — qidirmaymiz
+
+  moves = orderMoves(b, moves, color);
+  const deadline = Date.now() + cfg.maxTime;
+  let scoredFinal = moves.map(m=>({m, val:0}));  // tugagan oxirgi chuqurlik natijasi
+
+  for(let d=1; d<=cfg.maxDepth; d++){
+    const scored = [];
+    let alpha=-Infinity, aborted=false;
+    for(const m of moves){
+      const nb=applyMove(b,m);
+      const val=minimax(nb, d-1, alpha, Infinity, false, color, deadline);
+      if(val===SEARCH_ABORT){ aborted=true; break; }
+      scored.push({m, val});
+      if(val>alpha) alpha=val;   // root alpha — keyingi yurishlarni tezroq kesadi
+    }
+    if(aborted) break;                 // vaqt tugadi — oldingi chuqurlik natijasini ishlatamiz
+    scored.sort((a,bb)=>bb.val-a.val);
+    scoredFinal = scored;
+    moves = scored.map(s=>s.m);        // keyingi chuqurlik uchun yaxshiroq tartib
+    if(Date.now() >= deadline) break;
+  }
+
+  // Tanlash: top-N orasidan (Easy'da xato qiladi), teng baholilar orasida tasodifiy
+  return pickMove(scoredFinal, cfg);
+}
+
+function pickMove(scored, cfg){
+  if(scored.length===0) return null;
+  const bestVal = scored[0].val;
+  // randomness ehtimoli bilan top-N orasidan tasodifiy (zaif) yurish
+  if(cfg.randomness>0 && Math.random()<cfg.randomness){
+    const pool = scored.slice(0, Math.min(cfg.topN, scored.length));
+    return pool[Math.floor(Math.random()*pool.length)].m;
+  }
+  // Aks holda eng yaxshi baholilar orasidan tasodifiy (variativlik — har o'yin boshqacha)
+  const EPS = 1e-6;
+  const top = scored.filter(s=>Math.abs(s.val-bestVal)<EPS);
+  return top[Math.floor(Math.random()*top.length)].m;
+}
+
+// deadline berilsa va vaqt tugasa SEARCH_ABORT qaytaradi (yuqoriga tarqaladi)
+function minimax(b, depth, alpha, beta, isMax, aiColor, deadline){
+  if(deadline && Date.now()>deadline) return SEARCH_ABORT;
   const enemy = aiColor==='white'?'black':'white';
   const curColor = isMax?aiColor:enemy;
   const moves = getAllMovesForColor(b,curColor);
@@ -1117,7 +1179,9 @@ function minimax(b, depth, alpha, beta, isMax, aiColor){
     let val=-Infinity;
     for(const m of moves){
       const nb=applyMove(b,m);
-      val=Math.max(val,minimax(nb,depth-1,alpha,beta,false,aiColor));
+      const r=minimax(nb,depth-1,alpha,beta,false,aiColor,deadline);
+      if(r===SEARCH_ABORT) return SEARCH_ABORT;
+      val=Math.max(val,r);
       alpha=Math.max(alpha,val);
       if(beta<=alpha) break;
     }
@@ -1126,7 +1190,9 @@ function minimax(b, depth, alpha, beta, isMax, aiColor){
     let val=Infinity;
     for(const m of moves){
       const nb=applyMove(b,m);
-      val=Math.min(val,minimax(nb,depth-1,alpha,beta,true,aiColor));
+      const r=minimax(nb,depth-1,alpha,beta,true,aiColor,deadline);
+      if(r===SEARCH_ABORT) return SEARCH_ABORT;
+      val=Math.min(val,r);
       beta=Math.min(beta,val);
       if(beta<=alpha) break;
     }
