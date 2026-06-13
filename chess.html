@@ -730,15 +730,21 @@ let onlineConnected = false;
 // ============================================================
 // AI STRENGTH — ELO (chess.com style)
 // ============================================================
-// rand = ehtimol bilan tasodifiy (zaif) yurish — past Elo'da AI "xato" qiladi
+// Har bir Elo uchun:
+//   skill    = Stockfish "Skill Level" (0-20) — asosiy kuch tutqichi
+//   movetime = bitta yurishga ajratilgan vaqt (ms) — javob vaqtini CHEGARALAYDI
+//   depth    = xavfsizlik chuqurlik chegarasi — oddiy pozitsiyada ortiqcha qidirmaslik uchun
+//   rand     = past Elo'da insonga o'xshash tasodifiy (xato) yurish ehtimoli
+// Stockfish 'go depth D movetime T' da qaysi chegara avval kelsa, o'sha to'xtatadi —
+// shu sabab AI hech qachon ko'p o'ylab qolmaydi (oldin 'go depth 15' 10-30s ketardi).
 const eloConfigs = {
-  500:  { skill: 0,  depth: 1,  rand: .45 },
-  800:  { skill: 2,  depth: 2,  rand: .25 },
-  1000: { skill: 4,  depth: 4,  rand: .12 },
-  1200: { skill: 7,  depth: 6,  rand: .05 },
-  1400: { skill: 10, depth: 9,  rand: 0   },
-  1600: { skill: 14, depth: 12, rand: 0   },
-  1800: { skill: 18, depth: 15, rand: 0   }
+  500:  { skill: 0,  movetime: 150,  depth: 5,  rand: .30 },
+  800:  { skill: 2,  movetime: 250,  depth: 6,  rand: .15 },
+  1000: { skill: 5,  movetime: 400,  depth: 8,  rand: .06 },
+  1200: { skill: 8,  movetime: 600,  depth: 10, rand: .02 },
+  1400: { skill: 12, movetime: 900,  depth: 14, rand: 0   },
+  1600: { skill: 16, movetime: 1300, depth: 18, rand: 0   },
+  1800: { skill: 20, movetime: 2000, depth: 22, rand: 0   }
 };
 let selectedElo = parseInt(localStorage.getItem('vayb_elo')) || 1000;
 if(!eloConfigs[selectedElo]) selectedElo = 1000;
@@ -817,9 +823,13 @@ function handleStockfishMsg(event){
 function askStockfish(fen, cfg, callback){
   if(!stockfish){ setTimeout(()=>{ makeRandomMove(); },500); return; }
   sfCallback = callback;
-  stockfish.postMessage('setoption name Skill Level value ' + cfg.skill);
+  const skill = (cfg.skill !== undefined) ? cfg.skill : 20;
+  const movetime = cfg.movetime || 1000;   // vaqtni doim chegaralaymiz
+  const depth = cfg.depth || 14;            // xavfsizlik chuqurlik chegarasi
+  stockfish.postMessage('setoption name Skill Level value ' + skill);
   stockfish.postMessage('position fen ' + fen);
-  stockfish.postMessage('go depth ' + cfg.depth);
+  // movetime + depth — qaysi biri avval kelsa, Stockfish o'sha yerda to'xtaydi
+  stockfish.postMessage('go depth ' + depth + ' movetime ' + movetime);
 }
 
 // ============================================================
@@ -1191,7 +1201,7 @@ function undoMove(){
 function showHint(){
   if(!gameActive || game.turn()!==playerColor) return;
   if(!stockfish){ uiAlert(t('aiFallback')); return; }
-  askStockfish(game.fen(), {skill:20, depth:10}, (bestMove)=>{
+  askStockfish(game.fen(), {skill:20, movetime:1000, depth:14}, (bestMove)=>{
     const from=bestMove.substring(0,2), to=bestMove.substring(2,4);
     const fEl=document.querySelector(`[data-sq="${from}"]`);
     const tEl=document.querySelector(`[data-sq="${to}"]`);
