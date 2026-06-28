@@ -41,6 +41,9 @@ h1{font-size:22px;margin-bottom:14px;}
 <script>
 // O'z Telegram numeric ID'ngizni shu yerga qo'shing (masalan @userinfobot orqali oling).
 const ADMIN_IDS = [8264870741];
+// Brauzerdan kirish uchun maxfiy so'z. Linkda: admin.html?key=BU_SOZNI_OZGARTIRING
+// MUHIM: bu so'zni o'zingizniki bilan almashtiring va hech kimga bermang.
+const ADMIN_KEY = "vayb-2026-buxoro";
 
 const tg = window.Telegram && window.Telegram.WebApp;
 try{ tg && tg.ready(); tg && tg.expand(); }catch(e){}
@@ -65,9 +68,14 @@ function gate(msg){
     '<div class="muted" style="margin-top:8px;font-size:13px;">'+(msg||'')+'</div></div>';
 }
 
+function urlKey(){
+  try{ return new URLSearchParams(location.search).get('key')||''; }catch(e){ return ''; }
+}
 function isAdmin(){
-  if(!ADMIN_IDS.length) return true; // placeholder: ID qo'shilmaguncha ochiq (faqat dev uchun)
-  return myId && ADMIN_IDS.indexOf(Number(myId))>=0;
+  if(ADMIN_KEY && urlKey()===ADMIN_KEY) return true; // brauzerdan maxfiy link
+  if(myId && ADMIN_IDS.indexOf(Number(myId))>=0) return true; // Telegram ID
+  if(!ADMIN_IDS.length && !ADMIN_KEY) return true; // hech narsa sozlanmagan — dev
+  return false;
 }
 
 function fmtDate(ts){
