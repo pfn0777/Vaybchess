@@ -41,14 +41,20 @@ h1{font-size:22px;margin-bottom:14px;}
 <script>
 // O'z Telegram numeric ID'ngizni shu yerga qo'shing (masalan @userinfobot orqali oling).
 const ADMIN_IDS = [8264870741];
-// Brauzerdan kirish uchun maxfiy so'z. Linkda: admin.html?key=BU_SOZNI_OZGARTIRING
+// Brauzerdan kirish uchun maxfiy so'z. Sahifa ochilganda prompt() orqali so'raladi.
 // MUHIM: bu so'zni o'zingizniki bilan almashtiring va hech kimga bermang.
-const ADMIN_KEY = "vayb-2026-buxoro";
+const ADMIN_KEY = "admin_secret07";
 
 const tg = window.Telegram && window.Telegram.WebApp;
 try{ tg && tg.ready(); tg && tg.expand(); }catch(e){}
 const me = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
 const myId = me && me.id;
+
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 function db(){
   if(typeof firebase==='undefined') return null;
@@ -59,6 +65,7 @@ function db(){
       projectId:"chess-game-aba31"
     });
   }
+  console.warn('[admin] Firebase RTDB rules tekshiring: users/{id}/premium faqat Firebase Admin SDK yozsin, ochiq write BLOKLANGAN bo\'lsin.');
   return firebase.database();
 }
 
@@ -68,12 +75,17 @@ function gate(msg){
     '<div class="muted" style="margin-top:8px;font-size:13px;">'+(msg||'')+'</div></div>';
 }
 
-function urlKey(){
-  try{ return new URLSearchParams(location.search).get('key')||''; }catch(e){ return ''; }
+function checkAdminKey(){
+  if(!ADMIN_KEY) return false;
+  if(sessionStorage.getItem('ak')===ADMIN_KEY) return true;
+  const entered=prompt('Admin kaliti:');
+  if(entered===null) return false;
+  if(entered===ADMIN_KEY){ sessionStorage.setItem('ak',ADMIN_KEY); return true; }
+  return false;
 }
 function isAdmin(){
-  if(ADMIN_KEY && urlKey()===ADMIN_KEY) return true; // brauzerdan maxfiy link
   if(myId && ADMIN_IDS.indexOf(Number(myId))>=0) return true; // Telegram ID
+  if(ADMIN_KEY && checkAdminKey()) return true; // prompt orqali kalit
   if(!ADMIN_IDS.length && !ADMIN_KEY) return true; // hech narsa sozlanmagan — dev
   return false;
 }
@@ -132,17 +144,23 @@ function renderList(q){
   rows.forEach(u=>{
     const us=u.usage||{};
     const usageStr='♟'+(us.puzzles||0)+' · ♞'+(us.chess||0)+' · ⬤'+(us.checkers||0);
-    const uname=u.username?(' @'+u.username):'';
+    const uname=u.username?(' @'+esc(u.username)):'';
     html+='<div class="usr"><div class="info">'+
-      '<div class="nm">'+(u.name||'—')+uname+'</div>'+
-      '<div class="meta">ID '+u.id+' · '+fmtDate(u.lastSeen)+' · '+usageStr+'</div></div>'+
-      '<button class="pbtn '+(u.premium?'on':'off')+'" onclick="togglePremium(\''+u.id+'\','+(u.premium?'true':'false')+')">'+
+      '<div class="nm">'+esc(u.name||'—')+uname+'</div>'+
+      '<div class="meta">ID '+esc(u.id)+' · '+fmtDate(u.lastSeen)+' · '+usageStr+'</div></div>'+
+      '<button class="pbtn '+(u.premium?'on':'off')+'" data-uid="'+esc(u.id)+'" data-premium="'+(u.premium?'true':'false')+'">'+
       (u.premium?'⭐ Premium':'Premium ber')+'</button></div>';
   });
   document.getElementById('list').innerHTML=html;
 }
 
 function filter(v){ renderList(v); }
+
+document.addEventListener('click',function(e){
+  const btn=e.target.closest('button[data-uid]');
+  if(!btn) return;
+  togglePremium(btn.dataset.uid, btn.dataset.premium==='true');
+});
 
 function togglePremium(id, cur){
   const next=!cur;
