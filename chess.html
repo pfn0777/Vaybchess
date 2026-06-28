@@ -8,6 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="track.js"></script>
+<script>window.addEventListener('load',function(){try{window.vaybTrack&&window.vaybTrack('chess');}catch(e){}});</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -333,6 +335,9 @@ body{
   <button class="menu-btn" onclick="showScreen('onlineScreen')">
     <span>👥</span><span data-i18n="playOnline">Online o'ynash</span>
   </button>
+  <button class="menu-btn" onclick="location.href='puzzles.html'">
+    <span>🧩</span><span data-i18n="puzzles">Shaxmat mashqlari</span>
+  </button>
   <div class="lang-row">
     <button class="lang-btn" onclick="setLang('uz')">UZ</button>
     <button class="lang-btn" onclick="setLang('ru')">RU</button>
@@ -498,7 +503,7 @@ body{
 // ============================================================
 const i18n = {
   uz: {
-    tagline:"Shaxmat — aql o'yini", vsAI:"AI ga qarshi", playOnline:"Online o'ynash",
+    tagline:"Shaxmat — aql o'yini", vsAI:"AI ga qarshi", playOnline:"Online o'ynash", puzzles:"Shaxmat mashqlari",
     back:"Orqaga", chooseLevel:"Daraja tanlang", easy:"Oddiy", medium:"O'rta", hard:"Qiyin",
     chooseColor:"Rang tanlang:", white:"Oq", black:"Qora", startGame:"O'yinni boshlash",
     newGame:"Yangi o'yin yaratish", createRoom:"Xona yaratish", yourCode:"Kodingiz:",
@@ -519,7 +524,7 @@ const i18n = {
     fbFail:"Internet aloqasini tekshiring", aiFallback:"AI yuklanmadi — oddiy rejim"
   },
   ru: {
-    tagline:"Шахматы — игра разума", vsAI:"Против ИИ", playOnline:"Играть онлайн",
+    tagline:"Шахматы — игра разума", vsAI:"Против ИИ", playOnline:"Играть онлайн", puzzles:"Шахматные головоломки",
     back:"Назад", chooseLevel:"Выберите уровень", easy:"Лёгкий", medium:"Средний", hard:"Сложный",
     chooseColor:"Выберите цвет:", white:"Белые", black:"Чёрные", startGame:"Начать игру",
     newGame:"Создать новую игру", createRoom:"Создать комнату", yourCode:"Ваш код:",
@@ -540,7 +545,7 @@ const i18n = {
     fbFail:"Проверьте интернет-соединение", aiFallback:"ИИ не загрузился — простой режим"
   },
   en: {
-    tagline:"Chess — the game of minds", vsAI:"vs AI", playOnline:"Play Online",
+    tagline:"Chess — the game of minds", vsAI:"vs AI", playOnline:"Play Online", puzzles:"Chess Puzzles",
     back:"Back", chooseLevel:"Choose level", easy:"Easy", medium:"Medium", hard:"Hard",
     chooseColor:"Choose color:", white:"White", black:"Black", startGame:"Start Game",
     newGame:"Create new game", createRoom:"Create Room", yourCode:"Your code:",

@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vaybchess</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="track.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#1e2429;--card:#252d35;--card2:#2e3a44;--text:#e8eaed;--sub:#8fa3b1;--accent:#81b64c;--accent2:#f6c90e}
@@ -54,6 +57,15 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-se
     <div class="gc-arrow">›</div>
   </a>
 
+  <a class="game-card" href="puzzles.html">
+    <div class="gc-icon chess">🧩</div>
+    <div class="gc-info">
+      <div class="gc-title" id="puzzlesTitle">Shaxmat mashqlari</div>
+      <div class="gc-sub" id="puzzlesSub">300 ta taktik mashq · kunlik 2tadan</div>
+    </div>
+    <div class="gc-arrow">›</div>
+  </a>
+
   <div class="lang-row">
     <button class="lang-btn" onclick="setLang('uz')">UZ</button>
     <button class="lang-btn" onclick="setLang('ru')">RU</button>
@@ -66,9 +78,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-se
 const tg = window.Telegram && window.Telegram.WebApp;
 
 const i18n = {
-  uz:{hi:"Salom", pick:"O'yiningni tanla", chess:"Shaxmat", chessSub:"AI (500–1800 Elo) yoki do'st bilan", checkers:"Shashka", checkersSub:"AI yoki do'st bilan o'ynash"},
-  ru:{hi:"Привет", pick:"Выбери игру", chess:"Шахматы", chessSub:"ИИ (500–1800 Эло) или с другом", checkers:"Шашки", checkersSub:"ИИ или игра с другом"},
-  en:{hi:"Hi", pick:"Pick your game", chess:"Chess", chessSub:"AI (500–1800 Elo) or with a friend", checkers:"Checkers", checkersSub:"Play vs AI or a friend"}
+  uz:{hi:"Salom", pick:"O'yiningni tanla", chess:"Shaxmat", chessSub:"AI (500–1800 Elo) yoki do'st bilan", checkers:"Shashka", checkersSub:"AI yoki do'st bilan o'ynash", puzzles:"Shaxmat mashqlari", puzzlesSub:"300 ta taktik mashq · kunlik 2tadan"},
+  ru:{hi:"Привет", pick:"Выбери игру", chess:"Шахматы", chessSub:"ИИ (500–1800 Эло) или с другом", checkers:"Шашки", checkersSub:"ИИ или игра с другом", puzzles:"Шахматные головоломки", puzzlesSub:"300 тактических задач · 2 в день"},
+  en:{hi:"Hi", pick:"Pick your game", chess:"Chess", chessSub:"AI (500–1800 Elo) or with a friend", checkers:"Checkers", checkersSub:"Play vs AI or a friend", puzzles:"Chess Puzzles", puzzlesSub:"300 tactics · 2 daily"}
 };
 
 let lang = localStorage.getItem('vayb_lang');
@@ -92,6 +104,8 @@ function apply(){
   document.getElementById('chessSub').textContent = T.chessSub;
   document.getElementById('checkersTitle').textContent = T.checkers;
   document.getElementById('checkersSub').textContent = T.checkersSub;
+  document.getElementById('puzzlesTitle').textContent = T.puzzles;
+  document.getElementById('puzzlesSub').textContent = T.puzzlesSub;
   document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.textContent.toLowerCase()===lang));
 }
 
@@ -101,6 +115,7 @@ if(tg){
   try{ tg.BackButton.hide(); }catch(e){}
 }
 apply();
+try{ window.vaybTrack && window.vaybTrack('home'); }catch(e){}
 
 // Share link orqali xona kodi kelgan bo'lsa — to'g'ridan-to'g'ri shaxmatga o'tkazish
 try{

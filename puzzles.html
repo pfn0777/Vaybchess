@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Shaxmat mashqlari</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="track.js"></script>
+<script src="puzzles.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#eceff1; --panel:#ffffff; --line:#e0e0e0;
+  --accent:#159b8a; --accent-d:#0f7d6f; --orange:#e8732c;
+  --text:#1f2a30; --muted:#7a8a92;
+  --white-sq:#8fa3b1; --black-sq:#4a6274;
+  --sq:min(40px,10.5vw);
+}
+html,body{height:100%;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',Roboto,Arial,sans-serif;
+  min-height:100vh;overflow-x:hidden;
+  display:flex;flex-direction:column;
+}
+/* TOP BAR */
+.topbar{
+  background:#222a2e;color:#fff;padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:20;
+}
+.topbar .tb-title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.lang-row{display:flex;gap:6px;}
+.lang-btn{padding:4px 10px;border:1px solid #44525a;border-radius:6px;background:transparent;color:#cfd8dc;cursor:pointer;font-size:12px;font-weight:600;}
+.lang-btn.active{border-color:var(--accent);color:#fff;background:var(--accent);}
+.home-btn{background:transparent;border:none;color:#cfd8dc;cursor:pointer;font-size:20px;padding:2px 6px;}
+/* SCREENS */
+.app{flex:1;overflow-y:auto;padding-bottom:70px;}
+.screen{display:none;padding:14px;}
+.screen.active{display:block;}
+/* CARDS */
+.card{background:var(--panel);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:12px;overflow:hidden;}
+.card-pad{padding:16px;}
+.stat-head{display:flex;justify-content:space-around;text-align:center;padding:18px 10px 8px;}
+.stat-block .lbl{font-size:12px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;}
+.stat-block .val{font-size:30px;font-weight:800;color:var(--text);margin-top:2px;}
+.section-title{font-weight:700;font-size:17px;text-align:center;margin:6px 0 2px;}
+.section-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:8px;}
+/* DIFFICULTY ROW */
+.diff-row{
+  display:flex;align-items:center;gap:12px;padding:16px;
+  border-top:1px solid var(--line);cursor:pointer;transition:background .15s;
+}
+.diff-row:first-child{border-top:none;}
+.diff-row:active{background:#f3f6f7;}
+.diff-check{width:22px;height:22px;border-radius:5px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.diff-info{flex:1;min-width:0;}
+.diff-name{font-weight:700;font-size:16px;}
+.diff-meta{font-size:13px;color:var(--muted);}
+.diff-right{text-align:right;}
+.diff-right .cap{font-size:11px;color:var(--muted);text-transform:uppercase;}
+.diff-right .pct{font-size:18px;font-weight:800;color:var(--accent);}
+.diff-right .lvl{font-size:18px;font-weight:800;color:var(--orange);}
+/* big button */
+.big-btn{
+  display:block;width:100%;padding:16px;border:none;border-radius:12px;
+  background:var(--accent);color:#fff;font-size:17px;font-weight:700;cursor:pointer;
+  margin-top:6px;box-shadow:0 2px 8px rgba(21,155,138,.35);
+}
+.big-btn:active{background:var(--accent-d);}
+/* DAILY */
+.daily-sec{margin-bottom:16px;}
+.daily-sec h3{font-size:16px;font-weight:700;margin-bottom:8px;}
+.daily-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mini{background:var(--panel);border-radius:10px;padding:6px;box-shadow:0 1px 3px rgba(0,0,0,.1);cursor:pointer;position:relative;}
+.mini.done::after{content:'✓';position:absolute;top:6px;right:8px;color:var(--accent);font-weight:800;font-size:16px;}
+.mini-board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1/1;border-radius:4px;overflow:hidden;}
+.mini-board .mc{display:flex;align-items:center;justify-content:center;}
+.mini-board .mc.light{background:var(--white-sq);}
+.mini-board .mc.dark{background:var(--black-sq);}
+.mini-board .mc img{width:96%;height:96%;}
+.mini.locked{cursor:not-allowed;}
+.mini.locked .mini-board{filter:grayscale(1) brightness(.85);opacity:.55;}
+.mini .lock-badge{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;z-index:2;}
+.daily-sec.locked h3{color:var(--muted);}
+.daily-hint{font-size:12px;color:var(--muted);margin:4px 0 8px;}
+.daily-banner{background:var(--panel);border-radius:14px;padding:20px 16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:14px;}
+.daily-banner .dh{font-size:18px;font-weight:800;margin-bottom:6px;}
+.daily-banner .ds{font-size:13px;color:var(--muted);}
+.start-btn{display:block;width:100%;padding:16px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;cursor:pointer;margin:4px 0 16px;box-shadow:0 2px 8px rgba(21,155,138,.35);}
+.start-btn:active{background:var(--accent-d);}
+.start-btn:disabled{opacity:.5;cursor:default;box-shadow:none;}
+.daily-count{font-size:13px;color:var(--muted);text-align:center;margin-bottom:10px;}
+.diff-row.static{cursor:default;}
+.diff-row.static:active{background:transparent;}
+/* SOLVE */
+#solveScreen{padding:0;}
+.solve-top{background:var(--panel);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.solve-top .st-title{font-weight:700;font-size:15px;}
+.solve-top .st-sub{font-size:12px;color:var(--muted);}
+.board-wrap{display:flex;justify-content:center;padding:14px 8px;}
+#board{display:grid;grid-template-columns:repeat(8,var(--sq));grid-template-rows:repeat(8,var(--sq));box-shadow:0 6px 24px rgba(0,0,0,.25);border-radius:3px;overflow:hidden;user-select:none;}
+.sq{width:var(--sq);height:var(--sq);display:flex;align-items:center;justify-content:center;position:relative;}
+.sq.light{background:var(--white-sq);}
+.sq.dark{background:var(--black-sq);}
+.sq.sel{background:#f6f669!important;opacity:.9;}
+.sq.lastmv.light{background:#cdd884!important;}
+.sq.lastmv.dark{background:#9bab5e!important;}
+.sq.wrong{animation:shake .4s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+.sq.hintsq{outline:3px solid #4fc3f7;outline-offset:-3px;}
+.sq .pc{width:100%;height:100%;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.sq .pc img{width:90%;height:90%;filter:drop-shadow(1px 2px 2px rgba(0,0,0,.35));pointer-events:none;}
+.sq.dot::after{content:'';position:absolute;width:32%;height:32%;border-radius:50%;background:rgba(0,0,0,.3);}
+.sq.dot.cap::after{width:88%;height:88%;background:transparent;border:4px solid rgba(0,0,0,.3);}
+.solve-status{text-align:center;font-size:15px;font-weight:600;min-height:24px;padding:4px;}
+.solve-status.ok{color:var(--accent);}
+.solve-status.bad{color:#e53935;}
+.solve-actions{display:flex;gap:10px;padding:10px 16px;}
+.act{flex:1;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
+.act.ghost{background:#dfe6e9;color:#36474f;}
+.act.primary{background:var(--accent);color:#fff;}
+.act:disabled{opacity:.5;}
+/* SHOP */
+.shop-banner{background:var(--panel);border-radius:14px;padding:18px;text-align:center;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.shop-banner h3{font-size:18px;font-weight:800;}
+.shop-banner p{font-size:13px;color:var(--muted);margin:6px 0;}
+.shop-banner .disc{color:var(--orange);font-size:13px;font-weight:600;margin-bottom:10px;}
+.price{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap;}
+.price:active{background:var(--accent-d);}
+.pack{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 4px;border-top:1px solid var(--line);}
+.pack:first-child{border-top:none;}
+.pack-info .pn{font-weight:700;font-size:16px;}
+.pack-info .pm{font-size:13px;color:var(--muted);}
+.pack-info .pd{font-size:12px;color:var(--muted);margin-top:2px;}
+/* BOTTOM NAV */
+.bottomnav{
+  position:fixed;bottom:0;left:0;right:0;background:var(--panel);
+  border-top:1px solid var(--line);display:flex;z-index:20;
+  box-shadow:0 -1px 6px rgba(0,0,0,.06);
+}
+.nav-btn{flex:1;padding:8px 0 7px;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:11px;font-weight:600;}
+.nav-btn .ni{font-size:20px;}
+.nav-btn.active{color:var(--accent);}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="home-btn" onclick="goHome()">‹</button>
+  <div class="tb-title">♟ <span data-i18n="appTitle">Shaxmat mashqlari</span></div>
+  <div class="lang-row">
+    <button class="lang-btn" data-l="uz" onclick="setLang('uz')">UZ</button>
+    <button class="lang-btn" data-l="ru" onclick="setLang('ru')">RU</button>
+    <button class="lang-btn" data-l="en" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- DAILY -->
+  <div class="screen" id="dailyScreen"></div>
+
+  <!-- LEVELS -->
+  <div class="screen" id="levelsScreen">
+    <div class="card" id="levelsCard"></div>
+    <button class="big-btn" onclick="showShop()" data-i18n="shop">Magazin</button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="screen" id="progressScreen"></div>
+
+  <!-- SHOP -->
+  <div class="screen" id="shopScreen"></div>
+
+  <!-- SOLVE -->
+  <div class="screen" id="solveScreen">
+    <div class="solve-top">
+      <button class="home-btn" style="color:#36474f" onclick="backFromSolve()">‹</button>
+      <div style="text-align:center;flex:1;">
+        <div class="st-title" id="solveTitle">—</div>
+        <div class="st-sub" id="solveSub"></div>
+      </div>
+      <div style="width:30px;"></div>
+    </div>
+    <div class="board-wrap"><div id="board"></div></div>
+    <div class="solve-status" id="solveStatus"></div>
+    <div class="solve-actions">
+      <button class="act ghost" id="hintBtn" onclick="solveHint()" data-i18n="hint">Maslahat</button>
+      <button class="act primary" id="nextBtn" onclick="solveNext()" data-i18n="next">Keyingi</button>
+    </div>
+  </div>
+</div>
+
+<div class="bottomnav">
+  <button class="nav-btn" id="nav-daily" onclick="showTab('daily')"><span class="ni">📅</span><span data-i18n="navDaily">Kunlik</span></button>
+  <button class="nav-btn" id="nav-levels" onclick="showTab('levels')"><span class="ni">📋</span><span data-i18n="navPuzzles">Mashqlar</span></button>
+  <button class="nav-btn" id="nav-progress" onclick="showTab('progress')"><span class="ni">📈</span><span data-i18n="navProgress">Progress</span></button>
+</div>
+
+<script>
+// ============================================================ I18N
+const i18n = {
+  uz:{
+    appTitle:"Shaxmat mashqlari", navDaily:"Kunlik", navPuzzles:"Mashqlar", navProgress:"Progress",
+    shop:"Magazin", easy:"Oddiy mashqlar", medium:"O'rta mashqlar", hard:"Qiyin mashqlar",
+    easyShort:"Oddiy", mediumShort:"O'rta", hardShort:"Qiyin",
+    puzzlesWord:"mashq", solvedCap:"YECHILDI", levelCap:"DARAJA", level:"Daraja",
+    solvedTotal:"Yechildi", sources:"Mashq turlari", chosen:"mashq tanlandi",
+    startGame:"Mashqni boshlash", yourMove:"Siz yurasiz — eng yaxshi yurishni toping",
+    findMove:"Eng yaxshi yurishni toping", correct:"To'g'ri!", keepGoing:"Davom eting...",
+    wrong:"Noto'g'ri — qayta urinib ko'ring", solved:"Yechildi! 🎉", next:"Keyingi",
+    hint:"Maslahat", allDone:"Bu darajadagi barcha mashqlar yechildi!",
+    dailyTitle:"Bugungi mashqlar", dailySub:"Har kuni 6 ta yangi mashq",
+    shopTitle:"Magazin", unlockAll:"Barcha paketlarni ochish",
+    unlockDesc:"Barcha joriy va keyingi paketlarni oching", discount:"40% chegirma. Muddati cheklangan!",
+    comingSoon:"Tez kunda! To'lov ulanmoqda.", removeAds:"Har qanday xarid reklamani ham olib tashlaydi.",
+    start:"Boshlash", continueDaily:"Davom etish",
+    lockedMedium:"Avval 2 ta oddiy mashqni yeching", lockedHard:"Avval 2 ta o'rta mashqni yeching",
+    comeTomorrow:"Bugungi mashqlar tugadi — ertaga 6 ta yangisi bilan qayting!",
+    dailyDoneTitle:"Barakalla! 🎉", dailyProgress:"{n}/6 bajarildi", levelsHint:"Kunlik 6 ta mashqni bajaring",
+    premiumOn:"⭐ Premium faol", practiceLevels:"Cheksiz amaliyot — istalgan darajani yeching",
+    premiumLocked:"Cheksiz amaliyot premium foydalanuvchilar uchun", unlocked:"Ochilgan",
+    star:"⭐"
+  },
+  ru:{
+    appTitle:"Шахматные головоломки", navDaily:"Ежедневные", navPuzzles:"головоломки", navProgress:"Прогресс",
+    shop:"Магазин", easy:"Простые головоломки", medium:"Обычные головоломки", hard:"Сложные головоломки",
+    easyShort:"Легко", mediumShort:"Средне", hardShort:"Сложно",
+    puzzlesWord:"головоломки", solvedCap:"РЕШЕНО", levelCap:"УРОВЕНЬ", level:"Уровень",
+    solvedTotal:"Решено", sources:"Источники головоломок", chosen:"головоломки выбрано",
+    startGame:"Начать игру", yourMove:"Ваш ход — найдите лучший ход",
+    findMove:"Найдите лучший ход", correct:"Верно!", keepGoing:"Продолжайте...",
+    wrong:"Неверно — попробуйте снова", solved:"Решено! 🎉", next:"Дальше",
+    hint:"Подсказка", allDone:"Все головоломки этого уровня решены!",
+    dailyTitle:"Ежедневные задачи", dailySub:"6 новых головоломок каждый день",
+    shopTitle:"Магазин", unlockAll:"Разблокировать все паки",
+    unlockDesc:"Разблокировать ВСЕ текущие и последующие уровневые паки", discount:"Скидка 40%. Срок действия ограничен!",
+    comingSoon:"Скоро! Оплата подключается.", removeAds:"Любые покупки также убирают рекламу.",
+    start:"Начать", continueDaily:"Продолжить",
+    lockedMedium:"Сначала решите 2 простые задачи", lockedHard:"Сначала решите 2 обычные задачи",
+    comeTomorrow:"Задачи на сегодня решены — возвращайтесь завтра за 6 новыми!",
+    dailyDoneTitle:"Отлично! 🎉", dailyProgress:"Выполнено {n}/6", levelsHint:"Решайте 6 ежедневных задач",
+    premiumOn:"⭐ Premium активен", practiceLevels:"Безлимитная практика — решайте любой уровень",
+    premiumLocked:"Безлимитная практика для премиум-пользователей", unlocked:"Открыто",
+    star:"⭐"
+  },
+  en:{
+    appTitle:"Chess Puzzles", navDaily:"Daily", navPuzzles:"Puzzles", navProgress:"Progress",
+    shop:"Shop", easy:"Easy puzzles", medium:"Medium puzzles", hard:"Hard puzzles",
+    easyShort:"Easy", mediumShort:"Medium", hardShort:"Hard",
+    puzzlesWord:"puzzles", solvedCap:"SOLVED", levelCap:"LEVEL", level:"Level",
+    solvedTotal:"Solved", sources:"Puzzle sources", chosen:"puzzles selected",
+    startGame:"Start", yourMove:"Your move — find the best move",
+    findMove:"Find the best move", correct:"Correct!", keepGoing:"Keep going...",
+    wrong:"Wrong — try again", solved:"Solved! 🎉", next:"Next",
+    hint:"Hint", allDone:"All puzzles of this level are solved!",
+    dailyTitle:"Daily puzzles", dailySub:"6 new puzzles every day",
+    shopTitle:"Shop", unlockAll:"Unlock all packs",
+    unlockDesc:"Unlock ALL current and future level packs", discount:"40% off. Limited time!",
+    comingSoon:"Coming soon! Payments connecting.", removeAds:"Any purchase also removes ads.",
+    start:"Start", continueDaily:"Continue",
+    lockedMedium:"Solve 2 easy puzzles first", lockedHard:"Solve 2 medium puzzles first",
+    comeTomorrow:"Today's puzzles are done — come back tomorrow for 6 new ones!",
+    dailyDoneTitle:"Well done! 🎉", dailyProgress:"{n}/6 done", levelsHint:"Complete the 6 daily puzzles",
+    premiumOn:"⭐ Premium active", practiceLevels:"Unlimited practice — solve any level",
+    premiumLocked:"Unlimited practice is for premium users", unlocked:"Unlocked",
+    star:"⭐"
+  }
+};
+let lang = localStorage.getItem('vayb_lang');
+if(!lang){
+  const lc = (window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user||{}).language_code;
+  lang = lc&&lc.startsWith('ru')?'ru':lc&&lc.startsWith('en')?'en':'uz';
+}
+function t(k){ return (i18n[lang]&&i18n[lang][k])||i18n.uz[k]||k; }
+function setLang(l){
+  lang=l; localStorage.setItem('vayb_lang',l);
+  document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.getAttribute('data-i18n')));
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.l===l));
+  document.documentElement.lang=l;
+  renderAll();
+}
+
+// ============================================================ TELEGRAM
+const tg = window.Telegram && window.Telegram.WebApp;
+function tgInit(){
+  if(!tg) return;
+  try{ tg.ready(); tg.expand(); }catch(e){}
+  try{ tg.setHeaderColor('#222a2e'); tg.setBackgroundColor('#eceff1'); }catch(e){}
+  try{ tg.BackButton.onClick(handleBack); tg.BackButton.show(); }catch(e){}
+}
+function hapt(type){ try{ const h=tg&&tg.HapticFeedback; if(!h)return; if(['light','medium','heavy'].includes(type))h.impactOccurred(type); else h.notificationOccurred(type);}catch(e){} }
+function uiAlert(m){ if(tg&&tg.showAlert){try{tg.showAlert(m);return;}catch(e){}} alert(m); }
+function goHome(){ window.location.href='index.html'; }
+function handleBack(){
+  if(currentTab==='solve'){ backFromSolve(); }
+  else if(currentTab==='shop'){ showTab('levels'); }
+  else{ goHome(); }
+}
+
+// ============================================================ DATA / STATE
+const P = window.PUZZLES || {easy:[],medium:[],hard:[]};
+const TOTALS = {easy:P.easy.length, medium:P.medium.length, hard:P.hard.length};
+const pieceImages={};
+['w','b'].forEach(c=>['K','Q','R','B','N','P'].forEach(p=>{
+  pieceImages[c+p]='https://lichess1.org/assets/piece/cburnett/'+c+p+'.svg';
+}));
+function loadSolved(){ try{ return new Set(JSON.parse(localStorage.getItem('vayb_puzzle_solved')||'[]')); }catch(e){ return new Set(); } }
+function saveSolved(s){ localStorage.setItem('vayb_puzzle_solved', JSON.stringify([...s])); }
+let solvedSet = loadSolved();
+function solvedCount(diff){ return P[diff].filter(p=>solvedSet.has(p.id)).length; }
+
+let currentTab='daily';
+let isPremium = localStorage.getItem('vayb_packs_unlocked')==='1';
+
+// ============================================================ FEN -> mini board
+function fenBoard(fen, orient){
+  const rows = fen.split(' ')[0].split('/');
+  const grid=[]; // rank 8..1
+  rows.forEach(r=>{
+    const line=[];
+    for(const ch of r){
+      if(/\d/.test(ch)){ for(let i=0;i<+ch;i++) line.push(null); }
+      else{ const color = ch===ch.toUpperCase()?'w':'b'; line.push(color+ch.toUpperCase()); }
+    }
+    grid.push(line);
+  });
+  let ranks=[...Array(8).keys()]; // 0..7 = rank8..rank1
+  let files=[...Array(8).keys()];
+  if(orient==='b'){ ranks=ranks.reverse(); files=[...files].reverse(); }
+  let html='';
+  ranks.forEach(r=>files.forEach(f=>{
+    const pc=grid[r][f];
+    const isLight=(r+f)%2===0;
+    html+='<div class="mc '+(isLight?'light':'dark')+'">'+(pc?'<img src="'+pieceImages[pc]+'">':'')+'</div>';
+  }));
+  return html;
+}
+
+// ============================================================ TABS
+function showTab(tab){
+  currentTab=tab;
+  ['daily','levels','progress','shop','solve'].forEach(s=>{
+    const el=document.getElementById(s+'Screen'); if(el) el.classList.toggle('active',s===tab);
+  });
+  document.getElementById('nav-daily').classList.toggle('active',tab==='daily');
+  document.getElementById('nav-levels').classList.toggle('active',tab==='levels'||tab==='shop');
+  document.getElementById('nav-progress').classList.toggle('active',tab==='progress');
+  if(tab==='daily') renderDaily();
+  if(tab==='levels') renderLevels();
+  if(tab==='progress') renderProgress();
+  if(tab==='shop') renderShop();
+  document.querySelector('.app').scrollTop=0;
+}
+function showShop(){ showTab('shop'); }
+function renderAll(){
+  if(currentTab==='daily')renderDaily();
+  else if(currentTab==='levels')renderLevels();
+  else if(currentTab==='progress')renderProgress();
+  else if(currentTab==='shop')renderShop();
+}
+
+// ============================================================ DAILY
+function seededRng(seed){ let s=0; for(const c of seed) s=(s*31+c.charCodeAt(0))>>>0; return ()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; }; }
+function dateKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function dailyPuzzles(){
+  const rng=seededRng(dateKey());
+  const out={};
+  ['easy','medium','hard'].forEach(diff=>{
+    const pool=P[diff]; const picks=[]; const used=new Set();
+    let guard=0;
+    while(picks.length<2 && guard++<500 && pool.length){
+      const idx=Math.floor(rng()*pool.length);
+      if(used.has(idx)) continue; used.add(idx); picks.push(pool[idx]);
+    }
+    out[diff]=picks;
+  });
+  return out;
+}
+// Gated daily sequence: [E0,E1,M0,M1,H0,H1]
+function dailySeq(){
+  const dp=dailyPuzzles();
+  const seq=[];
+  [['easy',0],['easy',1],['medium',0],['medium',1],['hard',0],['hard',1]].forEach((p,i)=>{
+    const pz=dp[p[0]][p[1]];
+    if(pz) seq.push({diff:p[0],idx:i,pz});
+  });
+  return seq;
+}
+function getDaily(){
+  let d; try{ d=JSON.parse(localStorage.getItem('vayb_daily')||'null'); }catch(e){ d=null; }
+  const today=dateKey();
+  if(!d || d.date!==today){ d={date:today,done:[]}; localStorage.setItem('vayb_daily',JSON.stringify(d)); }
+  return d;
+}
+function markDailyDone(idx){
+  const d=getDaily();
+  if(!d.done.includes(idx)){ d.done.push(idx); localStorage.setItem('vayb_daily',JSON.stringify(d)); }
+}
+function isUnlocked(idx,done){
+  if(idx<2) return true;                       // easy always open
+  if(idx<4) return done.includes(0)&&done.includes(1); // medium needs both easy
+  return done.includes(2)&&done.includes(3);   // hard needs both medium
+}
+function dailyAllDone(){ return getDaily().done.length>=6; }
+function firstActionable(){
+  const seq=dailySeq(); const done=getDaily().done;
+  return seq.find(s=>isUnlocked(s.idx,done)&&!done.includes(s.idx))||null;
+}
+function renderDaily(){
+  const seq=dailySeq();
+  const done=getDaily().done;
+  const map={easy:'easyShort',medium:'mediumShort',hard:'hardShort'};
+  let html='<div class="section-title">'+t('dailyTitle')+'</div>'+
+    '<div class="daily-count">'+t('dailyProgress').replace('{n}',done.length)+'</div>';
+  if(dailyAllDone()){
+    html+='<div class="daily-banner"><div class="dh">'+t('dailyDoneTitle')+'</div>'+
+      '<div class="ds">'+t('comeTomorrow')+'</div></div>';
+  }else{
+    const act=firstActionable();
+    const label=done.length>0?t('continueDaily'):t('start');
+    html+='<button class="start-btn"'+(act?' onclick="openSeq('+act.idx+')"':' disabled')+'>'+label+'</button>';
+  }
+  // group seq into the 3 difficulty sections (2 each)
+  [['easy',[0,1]],['medium',[2,3]],['hard',[4,5]]].forEach(g=>{
+    const diff=g[0], idxs=g[1];
+    const secUnlocked=isUnlocked(idxs[0],done);
+    html+='<div class="daily-sec'+(secUnlocked?'':' locked')+'"><h3>'+t(map[diff])+'</h3>';
+    if(!secUnlocked){
+      html+='<div class="daily-hint">'+t(diff==='medium'?'lockedMedium':'lockedHard')+'</div>';
+    }
+    html+='<div class="daily-pair">';
+    idxs.forEach(idx=>{
+      const s=seq.find(x=>x.idx===idx); if(!s) return;
+      const unlocked=isUnlocked(idx,done);
+      const isDone=done.includes(idx);
+      const orient=sideToSolve(s.pz);
+      const cls='mini'+(isDone?' done':'')+(unlocked?'':' locked');
+      const onclick=(unlocked&&!isDone)?' onclick="openSeq('+idx+')"':'';
+      const badge=unlocked?'':'<div class="lock-badge">🔒</div>';
+      html+='<div class="'+cls+'"'+onclick+'>'+badge+'<div class="mini-board">'+fenBoard(s.pz.fen,orient)+'</div></div>';
+    });
+    html+='</div></div>';
+  });
+  document.getElementById('dailyScreen').innerHTML=html;
+}
+
+// ============================================================ LEVELS
+function renderLevels(){
+  const rows=[
+    {diff:'easy',name:t('easy'),lvl:1},
+    {diff:'medium',name:t('medium'),lvl:2},
+    {diff:'hard',name:t('hard'),lvl:3},
+  ];
+  let html='<div class="daily-hint" style="padding:10px 14px 4px;">'+
+    (isPremium?t('practiceLevels'):t('premiumLocked'))+'</div>';
+  rows.forEach(r=>{
+    const sc=solvedCount(r.diff), tot=TOTALS[r.diff];
+    const pct=tot?Math.round(sc/tot*100):0;
+    const cls=isPremium?'diff-row':'diff-row static';
+    const onclick=isPremium?' onclick="startLevel(\''+r.diff+'\')"':'';
+    html+='<div class="'+cls+'"'+onclick+'>'+
+      '<div class="diff-check">'+(isPremium?'›':'🔒')+'</div>'+
+      '<div class="diff-info"><div class="diff-name">'+r.name+'</div>'+
+      '<div class="diff-meta">'+tot+' '+t('puzzlesWord')+'</div></div>'+
+      '<div class="diff-right"><div class="cap">'+t('solvedCap')+'</div><div class="pct">'+pct+'%</div></div>'+
+      '<div class="diff-right"><div class="cap">'+t('levelCap')+'</div><div class="lvl">'+r.lvl+'</div></div>'+
+      '</div>';
+  });
+  document.getElementById('levelsCard').innerHTML=html;
+}
+
+// ============================================================ PROGRESS
+function renderProgress(){
+  const totalSolved=['easy','medium','hard'].reduce((a,d)=>a+solvedCount(d),0);
+  const totalAll=TOTALS.easy+TOTALS.medium+TOTALS.hard;
+  const level=1000 + totalSolved*3;
+  let html='<div class="card"><div class="stat-head">'+
+    '<div class="stat-block"><div class="lbl">'+t('levelCap')+'</div><div class="val">'+level+'</div></div>'+
+    '<div class="stat-block"><div class="lbl">'+t('solvedCap')+'</div><div class="val">'+totalSolved+' / '+totalAll+'</div></div>'+
+    '</div>'+
+    '<div class="section-title">'+t('sources')+'</div>'+
+    '<div class="section-sub">'+totalSolved+' '+t('chosen')+'</div>';
+  const rows=[{diff:'easy',name:t('easy'),lvl:1},{diff:'medium',name:t('medium'),lvl:2},{diff:'hard',name:t('hard'),lvl:3}];
+  rows.forEach(r=>{
+    const sc=solvedCount(r.diff),tot=TOTALS[r.diff],pct=tot?Math.round(sc/tot*100):0;
+    html+='<div class="diff-row static">'+
+      '<div class="diff-check">✓</div>'+
+      '<div class="diff-info"><div class="diff-name">'+r.name+'</div><div class="diff-meta">'+tot+' '+t('puzzlesWord')+'</div></div>'+
+      '<div class="diff-right"><div class="cap">'+t('solvedCap')+'</div><div class="pct">'+pct+'%</div></div>'+
+      '<div class="diff-right"><div class="cap">'+t('levelCap')+'</div><div class="lvl">'+r.lvl+'</div></div>'+
+      '</div>';
+  });
+  html+='</div>';
+  document.getElementById('progressScreen').innerHTML=html;
+}
+
+// ============================================================ SHOP
+const SHOP_PACKS=[
+  {name:{uz:"Oddiy maslar",ru:"Простые маты",en:"Easy mates"},n:400,price:299},
+  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Простые задачи, Том 2",en:"Easy puzzles, Vol 2"},n:200,price:299},
+  {name:{uz:"Oddiy masalalar",ru:"Обычные задачи",en:"Regular puzzles"},n:350,price:299,desc:{uz:"Real partiyalardan o'rtacha taktik mashqlar.",ru:"тактические головоломки средней сложности из реальных партий.",en:"medium tactical puzzles from real games."}},
+  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Обычные задачи, Том 2",en:"Regular puzzles, Vol 2"},n:200,price:299},
+  {name:{uz:"Oddiy maslar",ru:"Обычные маты",en:"Regular mates"},n:350,price:299},
+  {name:{uz:"Mat 2, 3 va 4 yurishda",ru:"Мат в 2, 3 и 4 хода",en:"Mate in 2, 3 and 4"},n:300,price:299},
+  {name:{uz:"Qiyin masalalar",ru:"Сложные задачи",en:"Hard puzzles"},n:300,price:299,desc:{uz:"o'rtadan yuqoriga qiyinlikdagi mashqlar.",ru:"трудные головоломки от средней до высокой сложности.",en:"hard puzzles from medium to high difficulty."}},
+  {name:{uz:"Qiyin masalalar, 2-jild",ru:"Сложные задачи, Том 2",en:"Hard puzzles, Vol 2"},n:150,price:299},
+  {name:{uz:"Qiyin maslar",ru:"Сложные маты",en:"Hard mates"},n:300,price:299},
+];
+function renderShop(){
+  if(isPremium){
+    let h='<div class="daily-banner"><div class="dh">'+t('premiumOn')+'</div>'+
+      '<div class="ds">'+t('practiceLevels')+'</div></div>';
+    h+='<div class="card card-pad">';
+    SHOP_PACKS.forEach(p=>{
+      const nm=p.name[lang]||p.name.uz;
+      h+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
+        '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div></div>'+
+        '<button class="price" style="background:var(--muted)" disabled>'+t('unlocked')+'</button></div>';
+    });
+    h+='</div>';
+    document.getElementById('shopScreen').innerHTML=h;
+    return;
+  }
+  let html='<div class="shop-banner"><h3>'+t('unlockAll')+'</h3><p>'+t('unlockDesc')+'</p>'+
+    '<p class="disc">'+t('discount')+'</p>'+
+    '<button class="price" style="padding:10px 22px;font-size:16px;" onclick="buyPack(\'all\')">⭐ 1500</button></div>';
+  html+='<div class="card"><div class="card-pad" style="padding:6px 16px;color:var(--muted);font-size:13px;text-align:center;">'+t('removeAds')+'</div></div>';
+  html+='<div class="card card-pad">';
+  SHOP_PACKS.forEach((p,i)=>{
+    const nm=p.name[lang]||p.name.uz;
+    const desc=p.desc?'<div class="pd">'+(p.desc[lang]||p.desc.uz)+'</div>':'';
+    html+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
+      '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div>'+desc+'</div>'+
+      '<button class="price" onclick="buyPack('+i+')">⭐ '+p.price+'</button></div>';
+  });
+  html+='</div>';
+  document.getElementById('shopScreen').innerHTML=html;
+}
+function buyPack(i){
+  // Telegram Stars invoice — backend (bot createInvoiceLink) hali ulanmagan
+  hapt('warning');
+  uiAlert(t('comingSoon'));
+}
+
+// ============================================================ SOLVE ENGINE
+let curDiff=null, curPuzzle=null, curChess=null, solMoves=[], moveIdx=0, solveColor='w';
+let selSq=null, possible=[], lastMv=null, solveLocked=false, curSeqIdx=-1;
+
+function sideToSolve(pz){
+  // after first (opponent) move, whose turn? load fen, the side to move in fen is opponent
+  const turn=pz.fen.split(' ')[1];
+  return turn==='w'?'b':'w'; // solver is opposite of fen side-to-move
+}
+
+function openSeq(idx){
+  const seq=dailySeq(); const s=seq.find(x=>x.idx===idx);
+  if(!s) return;
+  if(!isUnlocked(idx,getDaily().done)) return;
+  curSeqIdx=idx; loadPuzzle(s.diff,s.pz);
+}
+function startLevel(diff){
+  if(!isPremium) return;
+  const next=P[diff].find(p=>!solvedSet.has(p.id)) || P[diff][0];
+  if(!next){ uiAlert(t('allDone')); return; }
+  curSeqIdx=-1; loadPuzzle(diff,next);
+}
+function loadPuzzle(diff,pz){
+  curDiff=diff; curPuzzle=pz;
+  curChess=new Chess(pz.fen);
+  solMoves=pz.moves.slice();
+  solveColor=sideToSolve(pz);
+  selSq=null; possible=[]; lastMv=null; solveLocked=false;
+  showTab('solve');
+  // apply opponent's first move after short delay
+  document.getElementById('solveStatus').textContent='';
+  document.getElementById('solveStatus').className='solve-status';
+  document.getElementById('nextBtn').disabled=true;
+  document.getElementById('hintBtn').disabled=false;
+  const diffName={easy:t('easyShort'),medium:t('mediumShort'),hard:t('hardShort')}[diff];
+  document.getElementById('solveTitle').textContent=diffName+' · '+t('level')+' '+pz.rating;
+  document.getElementById('solveSub').textContent=t('findMove');
+  renderSolveBoard();
+  setTimeout(()=>{
+    applyUci(solMoves[0]); moveIdx=1; lastMv={from:solMoves[0].slice(0,2),to:solMoves[0].slice(2,4)};
+    renderSolveBoard();
+    setStatus(t('yourMove'),'');
+  },450);
+}
+function applyUci(uci){
+  const m={from:uci.slice(0,2),to:uci.slice(2,4)}; if(uci.length===5)m.promotion=uci[4];
+  return curChess.move(m);
+}
+function setStatus(msg,cls){ const e=document.getElementById('solveStatus'); e.textContent=msg; e.className='solve-status'+(cls?' '+cls:''); }
+
+function renderSolveBoard(){
+  const board=document.getElementById('board'); board.innerHTML='';
+  const files=['a','b','c','d','e','f','g','h']; const ranks=[8,7,6,5,4,3,2,1];
+  const dr=solveColor==='b'?[...ranks].reverse():ranks;
+  const df=solveColor==='b'?[...files].reverse():files;
+  dr.forEach(rank=>df.forEach(file=>{
+    const sq=file+rank;
+    const isLight=(files.indexOf(file)+rank)%2===1;
+    const d=document.createElement('div');
+    d.className='sq '+(isLight?'light':'dark');
+    d.dataset.sq=sq;
+    if(selSq===sq)d.classList.add('sel');
+    if(lastMv&&(lastMv.from===sq||lastMv.to===sq))d.classList.add('lastmv');
+    if(possible.includes(sq)){ d.classList.add('dot'); if(curChess.get(sq))d.classList.add('cap'); }
+    const pc=curChess.get(sq);
+    if(pc){
+      const span=document.createElement('span'); span.className='pc';
+      const img=document.createElement('img'); img.src=pieceImages[pc.color+pc.type.toUpperCase()];
+      span.appendChild(img); d.appendChild(span);
+    }
+    d.addEventListener('click',()=>onSquare(sq));
+    board.appendChild(d);
+  }));
+}
+
+function onSquare(sq){
+  if(solveLocked) return;
+  if(curChess.turn()!==solveColor) return;
+  if(selSq===sq){ selSq=null; possible=[]; renderSolveBoard(); return; }
+  if(selSq && possible.includes(sq)){ tryMove(selSq,sq); return; }
+  const pc=curChess.get(sq);
+  if(pc && pc.color===solveColor){
+    selSq=sq; possible=curChess.moves({square:sq,verbose:true}).map(m=>m.to);
+    renderSolveBoard();
+  } else { selSq=null; possible=[]; renderSolveBoard(); }
+}
+
+function tryMove(from,to){
+  const expected=solMoves[moveIdx];
+  let promo=undefined;
+  const pc=curChess.get(from);
+  if(pc&&pc.type==='p'&&(to[1]==='8'||to[1]==='1')) promo='q';
+  const uci=from+to+(promo||'');
+  const expectedBase=expected.slice(0,4);
+  // accept if matches solution; also accept if this move delivers checkmate (alt mate)
+  const test=new Chess(curChess.fen());
+  const tm=test.move({from,to,promotion:promo});
+  const isMate=tm&&test.in_checkmate();
+  const match = (from+to)===expectedBase || uci===expected || (isMate && moveIdx===solMoves.length-1);
+  if(!match){
+    selSq=null; possible=[];
+    renderSolveBoard();
+    const el=document.querySelector('[data-sq="'+from+'"]');
+    if(el){ el.classList.add('wrong'); setTimeout(()=>el.classList.remove('wrong'),400); }
+    hapt('error'); setStatus(t('wrong'),'bad');
+    return;
+  }
+  // correct
+  applyUci(expected); lastMv={from:expected.slice(0,2),to:expected.slice(2,4)};
+  selSq=null; possible=[]; moveIdx++; hapt('light');
+  renderSolveBoard();
+  if(moveIdx>=solMoves.length){ puzzleSolved(); return; }
+  // opponent reply
+  solveLocked=true; setStatus(t('correct'),'ok');
+  setTimeout(()=>{
+    applyUci(solMoves[moveIdx]); lastMv={from:solMoves[moveIdx].slice(0,2),to:solMoves[moveIdx].slice(2,4)};
+    moveIdx++; solveLocked=false; renderSolveBoard();
+    if(moveIdx>=solMoves.length){ puzzleSolved(); }
+    else setStatus(t('keepGoing'),'');
+  },450);
+}
+
+function puzzleSolved(){
+  solveLocked=true; hapt('success');
+  setStatus(t('solved'),'ok');
+  if(!solvedSet.has(curPuzzle.id)){ solvedSet.add(curPuzzle.id); saveSolved(solvedSet); }
+  if(curSeqIdx>=0) markDailyDone(curSeqIdx);
+  document.getElementById('nextBtn').disabled=false;
+  document.getElementById('hintBtn').disabled=true;
+}
+
+function solveHint(){
+  if(solveLocked) return;
+  const expected=solMoves[moveIdx]; if(!expected) return;
+  const from=expected.slice(0,2);
+  const el=document.querySelector('[data-sq="'+from+'"]');
+  if(el){ el.classList.add('hintsq'); setTimeout(()=>el.classList.remove('hintsq'),1500); }
+}
+function solveNext(){
+  if(curSeqIdx<0){ // level practice mode (premium)
+    const next=P[curDiff].find(p=>!solvedSet.has(p.id));
+    if(next){ loadPuzzle(curDiff,next); }
+    else { uiAlert(t('allDone')); showTab('levels'); }
+    return;
+  }
+  const next=firstActionable();
+  if(next){ openSeq(next.idx); }
+  else { uiAlert(t('comeTomorrow')); showTab('daily'); }
+}
+function backFromSolve(){ showTab(curSeqIdx<0?'levels':'daily'); }
+
+// ============================================================ INIT
+tgInit();
+setLang(lang);
+document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.l===lang));
+showTab('daily');
+try{ window.vaybTrack && window.vaybTrack('puzzles'); }catch(e){}
+try{
+  window.vaybGetPremium && window.vaybGetPremium(function(p){
+    if(p){ isPremium=true; localStorage.setItem('vayb_packs_unlocked','1'); }
+    else { isPremium=false; localStorage.removeItem('vayb_packs_unlocked'); }
+    renderAll();
+  });
+}catch(e){}
+</script>
+</body>
+</html>
