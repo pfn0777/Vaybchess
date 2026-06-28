@@ -124,7 +124,7 @@ function render(){
   });
 
   html+='<div class="sec">Foydalanuvchilar</div>';
-  html+='<input class="search" id="q" placeholder="Ism yoki ID bo\'yicha qidirish..." oninput="filter(this.value)">';
+  html+='<input class="search" id="q" placeholder="Ism yoki ID bo\'yicha qidirish...">';
   html+='<div id="list"></div>';
   document.getElementById('app').innerHTML=html;
   renderList('');
@@ -154,7 +154,9 @@ function renderList(q){
   document.getElementById('list').innerHTML=html;
 }
 
-function filter(v){ renderList(v); }
+document.addEventListener('input',function(e){
+  if(e.target && e.target.id==='q') renderList(e.target.value);
+});
 
 document.addEventListener('click',function(e){
   const btn=e.target.closest('button[data-uid]');
