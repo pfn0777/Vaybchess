@@ -2,8 +2,8 @@
 // The bot token stays server-side (Vercel env BOT_TOKEN). The client never sees it.
 const crypto = require('crypto');
 
-const ALL_PRICE = 1500;   // "Unlock all" premium bundle (Stars)
-const PACK_PRICE = 299;   // single pack (Stars)
+const ALL_PRICE = 500;    // "Unlock all" premium bundle (Stars)
+const PACK_PRICE = 100;   // single pack (Stars)
 const MAX_PACK_INDEX = 8; // SHOP_PACKS has 9 packs (0..8)
 
 // Validate Telegram WebApp initData per the official spec. Returns the parsed

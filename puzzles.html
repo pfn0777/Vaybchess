@@ -506,15 +506,15 @@ function renderProgress(){
 
 // ============================================================ SHOP
 const SHOP_PACKS=[
-  {name:{uz:"Oddiy maslar",ru:"Простые маты",en:"Easy mates"},n:400,price:299},
-  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Простые задачи, Том 2",en:"Easy puzzles, Vol 2"},n:200,price:299},
-  {name:{uz:"Oddiy masalalar",ru:"Обычные задачи",en:"Regular puzzles"},n:350,price:299,desc:{uz:"Real partiyalardan o'rtacha taktik mashqlar.",ru:"тактические головоломки средней сложности из реальных партий.",en:"medium tactical puzzles from real games."}},
-  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Обычные задачи, Том 2",en:"Regular puzzles, Vol 2"},n:200,price:299},
-  {name:{uz:"Oddiy maslar",ru:"Обычные маты",en:"Regular mates"},n:350,price:299},
-  {name:{uz:"Mat 2, 3 va 4 yurishda",ru:"Мат в 2, 3 и 4 хода",en:"Mate in 2, 3 and 4"},n:300,price:299},
-  {name:{uz:"Qiyin masalalar",ru:"Сложные задачи",en:"Hard puzzles"},n:300,price:299,desc:{uz:"o'rtadan yuqoriga qiyinlikdagi mashqlar.",ru:"трудные головоломки от средней до высокой сложности.",en:"hard puzzles from medium to high difficulty."}},
-  {name:{uz:"Qiyin masalalar, 2-jild",ru:"Сложные задачи, Том 2",en:"Hard puzzles, Vol 2"},n:150,price:299},
-  {name:{uz:"Qiyin maslar",ru:"Сложные маты",en:"Hard mates"},n:300,price:299},
+  {name:{uz:"Oddiy maslar",ru:"Простые маты",en:"Easy mates"},n:400,price:100},
+  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Простые задачи, Том 2",en:"Easy puzzles, Vol 2"},n:200,price:100},
+  {name:{uz:"Oddiy masalalar",ru:"Обычные задачи",en:"Regular puzzles"},n:350,price:100,desc:{uz:"Real partiyalardan o'rtacha taktik mashqlar.",ru:"тактические головоломки средней сложности из реальных партий.",en:"medium tactical puzzles from real games."}},
+  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Обычные задачи, Том 2",en:"Regular puzzles, Vol 2"},n:200,price:100},
+  {name:{uz:"Oddiy maslar",ru:"Обычные маты",en:"Regular mates"},n:350,price:100},
+  {name:{uz:"Mat 2, 3 va 4 yurishda",ru:"Мат в 2, 3 и 4 хода",en:"Mate in 2, 3 and 4"},n:300,price:100},
+  {name:{uz:"Qiyin masalalar",ru:"Сложные задачи",en:"Hard puzzles"},n:300,price:100,desc:{uz:"o'rtadan yuqoriga qiyinlikdagi mashqlar.",ru:"трудные головоломки от средней до высокой сложности.",en:"hard puzzles from medium to high difficulty."}},
+  {name:{uz:"Qiyin masalalar, 2-jild",ru:"Сложные задачи, Том 2",en:"Hard puzzles, Vol 2"},n:150,price:100},
+  {name:{uz:"Qiyin maslar",ru:"Сложные маты",en:"Hard mates"},n:300,price:100},
 ];
 function renderShop(){
   if(isPremium){
@@ -533,7 +533,7 @@ function renderShop(){
   }
   let html='<div class="shop-banner"><h3>'+t('unlockAll')+'</h3><p>'+t('unlockDesc')+'</p>'+
     '<p class="disc">'+t('discount')+'</p>'+
-    '<button class="price" style="padding:10px 22px;font-size:16px;" onclick="buyPack(\'all\')">⭐ 1500</button></div>';
+    '<button class="price" style="padding:10px 22px;font-size:16px;" onclick="buyPack(\'all\')">⭐ 500</button></div>';
   html+='<div class="card"><div class="card-pad" style="padding:6px 16px;color:var(--muted);font-size:13px;text-align:center;">'+t('removeAds')+'</div></div>';
   html+='<div class="card card-pad">';
   SHOP_PACKS.forEach((p,i)=>{
