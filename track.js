@@ -54,6 +54,10 @@
     var d = db(); if(!d){ cb(false); return; }
     d.ref('users/' + String(u.id) + '/premium').once('value', function(snap){
       cb(snap.val() === true);
+    }, function(err){
+      // Read failed (permission/network). Don't lock out a paid user: fall back to cached unlock.
+      console.warn('[vayb] premium read failed:', err && err.message);
+      cb(localStorage.getItem('vayb_packs_unlocked') === '1');
     });
   };
 })();
