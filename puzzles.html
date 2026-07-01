@@ -320,7 +320,7 @@ function solvedCount(diff){ return P[diff].filter(p=>solvedSet.has(p.id)).length
 let currentTab='daily';
 const ADMIN_IDS=[8264870741]; // owner Telegram ids — always premium
 function isAdminUser(){ const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user; return !!(u&&ADMIN_IDS.indexOf(Number(u.id))>=0); }
-let isPremium = localStorage.getItem('vayb_packs_unlocked')==='1' || isAdminUser();
+let isPremium = true; // free for everyone — all shop packs & level practice unlocked
 
 // ============================================================ FEN -> mini board
 function fenBoard(fen, orient){
@@ -732,13 +732,6 @@ setLang(lang);
 document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.l===lang));
 showTab('daily');
 try{ window.vaybTrack && window.vaybTrack('puzzles'); }catch(e){}
-try{
-  window.vaybGetPremium && window.vaybGetPremium(function(p){
-    if(p || isAdminUser()){ isPremium=true; localStorage.setItem('vayb_packs_unlocked','1'); }
-    else { isPremium=false; localStorage.removeItem('vayb_packs_unlocked'); }
-    renderAll();
-  });
-}catch(e){}
 </script>
 </body>
 </html>
