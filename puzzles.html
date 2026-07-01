@@ -136,6 +136,8 @@ body{
 .pack-info .pn{font-weight:700;font-size:16px;}
 .pack-info .pm{font-size:13px;color:var(--muted);}
 .pack-info .pd{font-size:12px;color:var(--muted);margin-top:2px;}
+.pack-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;white-space:nowrap;}
+.pack-right .pack-pct{font-size:12px;color:var(--muted);font-weight:700;}
 /* BOTTOM NAV */
 .bottomnav{
   position:fixed;bottom:0;left:0;right:0;background:var(--panel);
@@ -305,6 +307,19 @@ function handleBack(){
 // ============================================================ DATA / STATE
 const P = window.PUZZLES || {easy:[],medium:[],hard:[]};
 const TOTALS = {easy:P.easy.length, medium:P.medium.length, hard:P.hard.length};
+// Shop pack puzzles live in packs.js — loaded lazily the first time the shop opens.
+let PACKS = window.PACKS || null;
+let packsLoading = false;
+function loadPacks(cb){
+  if(PACKS){ cb(true); return; }
+  if(packsLoading){ return; }
+  packsLoading = true;
+  const s = document.createElement('script');
+  s.src = 'packs.js';
+  s.onload = function(){ packsLoading=false; PACKS = window.PACKS || {}; cb(true); };
+  s.onerror = function(){ packsLoading=false; cb(false); };
+  document.head.appendChild(s);
+}
 const pieceImages={};
 ['w','b'].forEach(c=>['K','Q','R','B','N','P'].forEach(p=>{
   pieceImages[c+p]='https://lichess1.org/assets/piece/cburnett/'+c+p+'.svg';
@@ -355,7 +370,7 @@ function showTab(tab){
   if(tab==='daily') renderDaily();
   if(tab==='levels') renderLevels();
   if(tab==='progress') renderProgress();
-  if(tab==='shop') renderShop();
+  if(tab==='shop'){ renderShop(); if(!PACKS) loadPacks(function(){ if(currentTab==='shop') renderShop(); }); }
   document.querySelector('.app').scrollTop=0;
 }
 function showShop(){ showTab('shop'); }
@@ -513,16 +528,29 @@ const SHOP_PACKS=[
   {name:{uz:"Qiyin masalalar, 2-jild",ru:"Сложные задачи, Том 2",en:"Hard puzzles, Vol 2"},n:150,diff:'hard'},
   {name:{uz:"Qiyin maslar",ru:"Сложные маты",en:"Hard mates"},n:300,diff:'hard'},
 ];
+function packSolved(i){
+  const pool=PACKS&&PACKS[i]; if(!pool) return 0;
+  return pool.filter(p=>solvedSet.has(p.id)).length;
+}
 function renderShop(){
   let h='<div class="daily-banner"><div class="dh">'+t('premiumOn')+'</div>'+
     '<div class="ds">'+t('practiceLevels')+'</div></div>';
   h+='<div class="card card-pad">';
-  SHOP_PACKS.forEach(p=>{
+  SHOP_PACKS.forEach((p,i)=>{
     const nm=p.name[lang]||p.name.uz;
     const desc=p.desc?'<div class="pd">'+(p.desc[lang]||p.desc.uz)+'</div>':'';
+    const pool=PACKS&&PACKS[i];
+    const tot=pool?pool.length:p.n;
+    let right;
+    if(!PACKS){
+      right='<button class="price" style="background:var(--muted)" disabled>…</button>';
+    }else{
+      const sc=packSolved(i), pct=tot?Math.round(sc/tot*100):0;
+      right='<div class="pack-right"><div class="pack-pct">'+pct+'%</div>'+
+        '<button class="price" onclick="startPack('+i+')">'+t('solveBtn')+'</button></div>';
+    }
     h+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
-      '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div>'+desc+'</div>'+
-      '<button class="price" onclick="startLevel(\''+p.diff+'\')">'+t('solveBtn')+'</button></div>';
+      '<div class="pm">'+tot+' '+t('puzzlesWord')+'</div>'+desc+'</div>'+right+'</div>';
   });
   h+='</div>';
   document.getElementById('shopScreen').innerHTML=h;
@@ -531,6 +559,8 @@ function renderShop(){
 // ============================================================ SOLVE ENGINE
 let curDiff=null, curPuzzle=null, curChess=null, solMoves=[], moveIdx=0, solveColor='w';
 let selSq=null, possible=[], lastMv=null, solveLocked=false, curSeqIdx=-1;
+// Practice pool abstraction: level (P[diff]) or shop pack (PACKS[i]).
+let curPool=null, curBackTab='levels', curTitle='';
 
 function sideToSolve(pz){
   // after first (opponent) move, whose turn? load fen, the side to move in fen is opponent
@@ -548,7 +578,16 @@ function startLevel(diff){
   if(!isPremium) return;
   const next=P[diff].find(p=>!solvedSet.has(p.id)) || P[diff][0];
   if(!next){ uiAlert(t('allDone')); return; }
-  curSeqIdx=-1; loadPuzzle(diff,next);
+  curSeqIdx=-1; curPool=P[diff]; curBackTab='levels';
+  curTitle={easy:t('easyShort'),medium:t('mediumShort'),hard:t('hardShort')}[diff];
+  loadPuzzle(diff,next);
+}
+function startPack(i){
+  const pool=PACKS&&PACKS[i]; if(!pool||!pool.length) return;
+  const next=pool.find(p=>!solvedSet.has(p.id)) || pool[0];
+  curSeqIdx=-1; curPool=pool; curBackTab='shop';
+  curTitle=(SHOP_PACKS[i].name[lang]||SHOP_PACKS[i].name.uz);
+  loadPuzzle(null,next);
 }
 function loadPuzzle(diff,pz){
   curDiff=diff; curPuzzle=pz;
@@ -562,8 +601,8 @@ function loadPuzzle(diff,pz){
   document.getElementById('solveStatus').className='solve-status';
   document.getElementById('nextBtn').disabled=true;
   document.getElementById('hintBtn').disabled=false;
-  const diffName={easy:t('easyShort'),medium:t('mediumShort'),hard:t('hardShort')}[diff];
-  document.getElementById('solveTitle').textContent=diffName+' · '+t('level')+' '+pz.rating;
+  const title=curSeqIdx>=0 ? {easy:t('easyShort'),medium:t('mediumShort'),hard:t('hardShort')}[diff] : (curTitle||'');
+  document.getElementById('solveTitle').textContent=title+' · '+t('level')+' '+pz.rating;
   document.getElementById('solveSub').textContent=t('findMove');
   renderSolveBoard();
   setTimeout(()=>{
@@ -667,17 +706,18 @@ function solveHint(){
   if(el){ el.classList.add('hintsq'); setTimeout(()=>el.classList.remove('hintsq'),1500); }
 }
 function solveNext(){
-  if(curSeqIdx<0){ // level practice mode (premium)
-    const next=P[curDiff].find(p=>!solvedSet.has(p.id));
+  if(curSeqIdx<0){ // level / pack practice mode
+    const pool=curPool||P[curDiff]||[];
+    const next=pool.find(p=>!solvedSet.has(p.id));
     if(next){ loadPuzzle(curDiff,next); }
-    else { uiAlert(t('allDone')); showTab('levels'); }
+    else { uiAlert(t('allDone')); showTab(curBackTab); }
     return;
   }
   const next=firstActionable();
   if(next){ openSeq(next.idx); }
   else { uiAlert(t('comeTomorrow')); showTab('daily'); }
 }
-function backFromSolve(){ showTab(curSeqIdx<0?'levels':'daily'); }
+function backFromSolve(){ showTab(curSeqIdx<0?curBackTab:'daily'); }
 
 // ============================================================ INIT
 tgInit();

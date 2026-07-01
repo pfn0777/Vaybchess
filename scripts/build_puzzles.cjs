@@ -86,3 +86,62 @@ const header = '// Auto-generated from Lichess open puzzle DB (CC0). Do not edit
 const body = 'window.PUZZLES = ' + JSON.stringify(buckets) + ';\n';
 fs.writeFileSync(__dirname + '/../puzzles.js', header + body);
 console.log('Wrote puzzles.js  total', buckets.easy.length + buckets.medium.length + buckets.hard.length);
+
+// ============================================================ SHOP PACKS
+// Each pack gets its own unique puzzles (disjoint from buckets and each other).
+// band: rating window; kind: 'mate' (any mate theme) | 'general' (no mate) | 'mateN' (mateIn2/3/4).
+const PACK_SPECS = [
+  { band: 'easy',   kind: 'mate',    count: 400 }, // 0 Easy mates
+  { band: 'easy',   kind: 'general', count: 200 }, // 1 Easy puzzles Vol 2
+  { band: 'medium', kind: 'general', count: 350 }, // 2 Regular puzzles
+  { band: 'medium', kind: 'general', count: 200 }, // 3 Regular puzzles Vol 2
+  { band: 'medium', kind: 'mate',    count: 350 }, // 4 Regular mates
+  { band: 'any',    kind: 'mateN',   count: 300 }, // 5 Mate in 2,3,4
+  { band: 'hard',   kind: 'general', count: 300 }, // 6 Hard puzzles
+  { band: 'hard',   kind: 'general', count: 150 }, // 7 Hard puzzles Vol 2
+  { band: 'hard',   kind: 'mate',    count: 300 }, // 8 Hard mates
+];
+
+function themeMatches(themes, kind) {
+  const hasMate = themes.some(t => /mate/i.test(t));
+  if (kind === 'mate') return hasMate;
+  if (kind === 'general') return !hasMate;
+  if (kind === 'mateN') return themes.some(t => t === 'mateIn2' || t === 'mateIn3' || t === 'mateIn4');
+  return false;
+}
+function bandMatches(rating, band) {
+  if (band === 'any') return true;
+  return bucketOf(rating) === band;
+}
+
+const packs = {};
+PACK_SPECS.forEach((_, i) => { packs[i] = []; });
+
+// Single pass: fill each pack in order, sharing seenId for global uniqueness.
+for (const line of lines) {
+  if (!line) continue;
+  const pz = parseLine(line);
+  if (!pz || !pz.rating || seenId.has(pz.id)) continue;
+  const spec = PACK_SPECS.findIndex((s, i) =>
+    packs[i].length < s.count && bandMatches(pz.rating, s.band) && themeMatches(pz.themes, s.kind));
+  if (spec < 0) continue;
+  if (!validate(pz)) continue;
+  seenId.add(pz.id);
+  packs[spec].push({ id: pz.id, fen: pz.fen, moves: pz.moves, rating: pz.rating });
+  if (PACK_SPECS.every((s, i) => packs[i].length >= s.count)) break;
+}
+
+// Report packs
+let packTotal = 0, packShort = false;
+PACK_SPECS.forEach((s, i) => {
+  packTotal += packs[i].length;
+  if (packs[i].length < s.count) packShort = true;
+  console.log('pack', i, packs[i].length, '/', s.count, s.band, s.kind);
+});
+if (packShort) console.error('WARN: a pack is short — relax spec or download more data');
+
+const packsBody = '// Auto-generated from Lichess open puzzle DB (CC0). Do not edit by hand.\n' +
+  'window.PACKS = ' + JSON.stringify(packs) + ';\n';
+fs.writeFileSync(__dirname + '/../packs.js', packsBody);
+const packsBytes = Buffer.byteLength(packsBody);
+console.log('Wrote packs.js  total', packTotal, ' size', (packsBytes / 1048576).toFixed(2) + 'MB');
