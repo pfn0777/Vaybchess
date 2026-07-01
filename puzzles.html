@@ -223,7 +223,7 @@ const i18n = {
     comeTomorrow:"Bugungi mashqlar tugadi — ertaga 6 ta yangisi bilan qayting!",
     dailyDoneTitle:"Barakalla! 🎉", dailyProgress:"{n}/6 bajarildi", levelsHint:"Kunlik 6 ta mashqni bajaring",
     premiumOn:"⭐ Premium faol", practiceLevels:"Cheksiz amaliyot — istalgan darajani yeching",
-    premiumLocked:"Cheksiz amaliyot premium foydalanuvchilar uchun", unlocked:"Ochilgan",
+    premiumLocked:"Cheksiz amaliyot premium foydalanuvchilar uchun", unlocked:"Ochilgan", solveBtn:"Yechish",
     star:"⭐"
   },
   ru:{
@@ -245,7 +245,7 @@ const i18n = {
     comeTomorrow:"Задачи на сегодня решены — возвращайтесь завтра за 6 новыми!",
     dailyDoneTitle:"Отлично! 🎉", dailyProgress:"Выполнено {n}/6", levelsHint:"Решайте 6 ежедневных задач",
     premiumOn:"⭐ Premium активен", practiceLevels:"Безлимитная практика — решайте любой уровень",
-    premiumLocked:"Безлимитная практика для премиум-пользователей", unlocked:"Открыто",
+    premiumLocked:"Безлимитная практика для премиум-пользователей", unlocked:"Открыто", solveBtn:"Решать",
     star:"⭐"
   },
   en:{
@@ -267,7 +267,7 @@ const i18n = {
     comeTomorrow:"Today's puzzles are done — come back tomorrow for 6 new ones!",
     dailyDoneTitle:"Well done! 🎉", dailyProgress:"{n}/6 done", levelsHint:"Complete the 6 daily puzzles",
     premiumOn:"⭐ Premium active", practiceLevels:"Unlimited practice — solve any level",
-    premiumLocked:"Unlimited practice is for premium users", unlocked:"Unlocked",
+    premiumLocked:"Unlimited practice is for premium users", unlocked:"Unlocked", solveBtn:"Solve",
     star:"⭐"
   }
 };
@@ -503,15 +503,15 @@ function renderProgress(){
 
 // ============================================================ SHOP
 const SHOP_PACKS=[
-  {name:{uz:"Oddiy maslar",ru:"Простые маты",en:"Easy mates"},n:400,price:100},
-  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Простые задачи, Том 2",en:"Easy puzzles, Vol 2"},n:200,price:100},
-  {name:{uz:"Oddiy masalalar",ru:"Обычные задачи",en:"Regular puzzles"},n:350,price:100,desc:{uz:"Real partiyalardan o'rtacha taktik mashqlar.",ru:"тактические головоломки средней сложности из реальных партий.",en:"medium tactical puzzles from real games."}},
-  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Обычные задачи, Том 2",en:"Regular puzzles, Vol 2"},n:200,price:100},
-  {name:{uz:"Oddiy maslar",ru:"Обычные маты",en:"Regular mates"},n:350,price:100},
-  {name:{uz:"Mat 2, 3 va 4 yurishda",ru:"Мат в 2, 3 и 4 хода",en:"Mate in 2, 3 and 4"},n:300,price:100},
-  {name:{uz:"Qiyin masalalar",ru:"Сложные задачи",en:"Hard puzzles"},n:300,price:100,desc:{uz:"o'rtadan yuqoriga qiyinlikdagi mashqlar.",ru:"трудные головоломки от средней до высокой сложности.",en:"hard puzzles from medium to high difficulty."}},
-  {name:{uz:"Qiyin masalalar, 2-jild",ru:"Сложные задачи, Том 2",en:"Hard puzzles, Vol 2"},n:150,price:100},
-  {name:{uz:"Qiyin maslar",ru:"Сложные маты",en:"Hard mates"},n:300,price:100},
+  {name:{uz:"Oddiy maslar",ru:"Простые маты",en:"Easy mates"},n:400,diff:'easy'},
+  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Простые задачи, Том 2",en:"Easy puzzles, Vol 2"},n:200,diff:'easy'},
+  {name:{uz:"Oddiy masalalar",ru:"Обычные задачи",en:"Regular puzzles"},n:350,diff:'medium',desc:{uz:"Real partiyalardan o'rtacha taktik mashqlar.",ru:"тактические головоломки средней сложности из реальных партий.",en:"medium tactical puzzles from real games."}},
+  {name:{uz:"Oddiy masalalar, 2-jild",ru:"Обычные задачи, Том 2",en:"Regular puzzles, Vol 2"},n:200,diff:'medium'},
+  {name:{uz:"Oddiy maslar",ru:"Обычные маты",en:"Regular mates"},n:350,diff:'medium'},
+  {name:{uz:"Mat 2, 3 va 4 yurishda",ru:"Мат в 2, 3 и 4 хода",en:"Mate in 2, 3 and 4"},n:300,diff:'medium'},
+  {name:{uz:"Qiyin masalalar",ru:"Сложные задачи",en:"Hard puzzles"},n:300,diff:'hard',desc:{uz:"o'rtadan yuqoriga qiyinlikdagi mashqlar.",ru:"трудные головоломки от средней до высокой сложности.",en:"hard puzzles from medium to high difficulty."}},
+  {name:{uz:"Qiyin masalalar, 2-jild",ru:"Сложные задачи, Том 2",en:"Hard puzzles, Vol 2"},n:150,diff:'hard'},
+  {name:{uz:"Qiyin maslar",ru:"Сложные маты",en:"Hard mates"},n:300,diff:'hard'},
 ];
 function renderShop(){
   let h='<div class="daily-banner"><div class="dh">'+t('premiumOn')+'</div>'+
@@ -519,9 +519,10 @@ function renderShop(){
   h+='<div class="card card-pad">';
   SHOP_PACKS.forEach(p=>{
     const nm=p.name[lang]||p.name.uz;
+    const desc=p.desc?'<div class="pd">'+(p.desc[lang]||p.desc.uz)+'</div>':'';
     h+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
-      '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div></div>'+
-      '<button class="price" style="background:var(--muted)" disabled>'+t('unlocked')+'</button></div>';
+      '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div>'+desc+'</div>'+
+      '<button class="price" onclick="startLevel(\''+p.diff+'\')">'+t('solveBtn')+'</button></div>';
   });
   h+='</div>';
   document.getElementById('shopScreen').innerHTML=h;
