@@ -546,7 +546,7 @@ function renderShop(){
       right='<button class="price" style="background:var(--muted)" disabled>…</button>';
     }else{
       const sc=packSolved(i), pct=tot?Math.round(sc/tot*100):0;
-      right='<div class="pack-right"><div class="pack-pct">'+pct+'%</div>'+
+      right='<div class="pack-right"><div class="pack-pct">'+sc+' / '+tot+' · '+pct+'%</div>'+
         '<button class="price" onclick="startPack('+i+')">'+t('solveBtn')+'</button></div>';
     }
     h+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
