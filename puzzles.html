@@ -218,7 +218,6 @@ const i18n = {
     shopTitle:"Magazin", unlockAll:"Barcha paketlarni ochish",
     unlockDesc:"Barcha joriy va keyingi paketlarni oching", discount:"40% chegirma. Muddati cheklangan!",
     comingSoon:"Tez kunda! To'lov ulanmoqda.", removeAds:"Har qanday xarid reklamani ham olib tashlaydi.",
-    payProcessing:"To'lov tayyorlanmoqda...", paySuccess:"To'lov muvaffaqiyatli! Premium faollashtirildi ⭐", payFailed:"To'lov amalga oshmadi. Qaytadan urinib ko'ring.",
     start:"Boshlash", continueDaily:"Davom etish",
     lockedMedium:"Avval 2 ta oddiy mashqni yeching", lockedHard:"Avval 2 ta o'rta mashqni yeching",
     comeTomorrow:"Bugungi mashqlar tugadi — ertaga 6 ta yangisi bilan qayting!",
@@ -241,7 +240,6 @@ const i18n = {
     shopTitle:"Магазин", unlockAll:"Разблокировать все паки",
     unlockDesc:"Разблокировать ВСЕ текущие и последующие уровневые паки", discount:"Скидка 40%. Срок действия ограничен!",
     comingSoon:"Скоро! Оплата подключается.", removeAds:"Любые покупки также убирают рекламу.",
-    payProcessing:"Оплата готовится...", paySuccess:"Оплата прошла! Премиум активирован ⭐", payFailed:"Оплата не прошла. Попробуйте снова.",
     start:"Начать", continueDaily:"Продолжить",
     lockedMedium:"Сначала решите 2 простые задачи", lockedHard:"Сначала решите 2 обычные задачи",
     comeTomorrow:"Задачи на сегодня решены — возвращайтесь завтра за 6 новыми!",
@@ -264,7 +262,6 @@ const i18n = {
     shopTitle:"Shop", unlockAll:"Unlock all packs",
     unlockDesc:"Unlock ALL current and future level packs", discount:"40% off. Limited time!",
     comingSoon:"Coming soon! Payments connecting.", removeAds:"Any purchase also removes ads.",
-    payProcessing:"Preparing payment...", paySuccess:"Payment successful! Premium activated ⭐", payFailed:"Payment failed. Please try again.",
     start:"Start", continueDaily:"Continue",
     lockedMedium:"Solve 2 easy puzzles first", lockedHard:"Solve 2 medium puzzles first",
     comeTomorrow:"Today's puzzles are done — come back tomorrow for 6 new ones!",
@@ -517,62 +514,17 @@ const SHOP_PACKS=[
   {name:{uz:"Qiyin maslar",ru:"Сложные маты",en:"Hard mates"},n:300,price:100},
 ];
 function renderShop(){
-  if(isPremium){
-    let h='<div class="daily-banner"><div class="dh">'+t('premiumOn')+'</div>'+
-      '<div class="ds">'+t('practiceLevels')+'</div></div>';
-    h+='<div class="card card-pad">';
-    SHOP_PACKS.forEach(p=>{
-      const nm=p.name[lang]||p.name.uz;
-      h+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
-        '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div></div>'+
-        '<button class="price" style="background:var(--muted)" disabled>'+t('unlocked')+'</button></div>';
-    });
-    h+='</div>';
-    document.getElementById('shopScreen').innerHTML=h;
-    return;
-  }
-  let html='<div class="shop-banner"><h3>'+t('unlockAll')+'</h3><p>'+t('unlockDesc')+'</p>'+
-    '<p class="disc">'+t('discount')+'</p>'+
-    '<button class="price" style="padding:10px 22px;font-size:16px;" onclick="buyPack(\'all\')">⭐ 500</button></div>';
-  html+='<div class="card"><div class="card-pad" style="padding:6px 16px;color:var(--muted);font-size:13px;text-align:center;">'+t('removeAds')+'</div></div>';
-  html+='<div class="card card-pad">';
-  SHOP_PACKS.forEach((p,i)=>{
+  let h='<div class="daily-banner"><div class="dh">'+t('premiumOn')+'</div>'+
+    '<div class="ds">'+t('practiceLevels')+'</div></div>';
+  h+='<div class="card card-pad">';
+  SHOP_PACKS.forEach(p=>{
     const nm=p.name[lang]||p.name.uz;
-    const desc=p.desc?'<div class="pd">'+(p.desc[lang]||p.desc.uz)+'</div>':'';
-    html+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
-      '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div>'+desc+'</div>'+
-      '<button class="price" onclick="buyPack('+i+')">⭐ '+p.price+'</button></div>';
+    h+='<div class="pack"><div class="pack-info"><div class="pn">'+nm+'</div>'+
+      '<div class="pm">'+p.n+' '+t('puzzlesWord')+'</div></div>'+
+      '<button class="price" style="background:var(--muted)" disabled>'+t('unlocked')+'</button></div>';
   });
-  html+='</div>';
-  document.getElementById('shopScreen').innerHTML=html;
-}
-function applyPremiumUnlock(){
-  isPremium=true;
-  localStorage.setItem('vayb_packs_unlocked','1');
-  renderAll();
-}
-function buyPack(i){
-  // Telegram Stars: backend creates the invoice link, then openInvoice handles payment.
-  if(!tg || !tg.openInvoice || !tg.initData){ hapt('warning'); uiAlert(t('comingSoon')); return; }
-  hapt('light');
-  fetch('/api/create-invoice', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({initData:tg.initData, packId:i})
-  }).then(function(r){ return r.json(); }).then(function(d){
-    if(!d || !d.link) throw new Error('no link');
-    tg.openInvoice(d.link, function(status){
-      if(status==='paid'){
-        hapt('success');
-        if(window.vaybGetPremium){ window.vaybGetPremium(function(p){ if(p||isAdminUser()) applyPremiumUnlock(); }); }
-        else applyPremiumUnlock();
-        uiAlert(t('paySuccess'));
-      } else if(status==='failed'){
-        hapt('error'); uiAlert(t('payFailed'));
-      }
-      // 'cancelled' / 'pending' — sukut bilan o'tkazib yuboriladi
-    });
-  }).catch(function(){ hapt('error'); uiAlert(t('payFailed')); });
+  h+='</div>';
+  document.getElementById('shopScreen').innerHTML=h;
 }
 
 // ============================================================ SOLVE ENGINE
