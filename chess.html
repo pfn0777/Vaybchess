@@ -937,12 +937,12 @@ function renderBoard(){
       // Coords
       const fileIdx = files.indexOf(file);
       const isLastRank = playerColor==='b' ? rank===8 : rank===1;
-      const isLastFile = playerColor==='b' ? fileIdx===0 : fileIdx===7;
+      const isFirstFile = playerColor==='b' ? fileIdx===7 : fileIdx===0;
       if(isLastRank){
         const fc=document.createElement('span');
         fc.className='coord file';fc.textContent=file;div.appendChild(fc);
       }
-      if(isLastFile){
+      if(isFirstFile){
         const rc=document.createElement('span');
         rc.className='coord rank';rc.textContent=rank;div.appendChild(rc);
       }
