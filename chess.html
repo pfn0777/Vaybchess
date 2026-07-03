@@ -386,6 +386,21 @@ body{
 
   <div class="online-section">
     <h3 data-i18n="newGame">Yangi o'yin yaratish</h3>
+    <div style="color:var(--muted);font-size:.85rem;margin-bottom:6px;" data-i18n="chooseColor">Rang tanlang:</div>
+    <div class="color-row">
+      <button class="color-btn selected" id="oColorW" onclick="selectOnlineColor('w')">♔ <span data-i18n="white">Oq</span></button>
+      <button class="color-btn" id="oColorB" onclick="selectOnlineColor('b')">♚ <span data-i18n="black">Qora</span></button>
+    </div>
+    <div style="color:var(--muted);font-size:.85rem;margin:10px 0 6px;" data-i18n="chooseTime">⏱ Vaqt tanlang</div>
+    <div class="time-grid" id="oTimeGrid">
+      <button class="time-btn"          data-seconds="60"   onclick="selectOnlineTime(this,60)">1 daq</button>
+      <button class="time-btn"          data-seconds="180"  onclick="selectOnlineTime(this,180)">3 daq</button>
+      <button class="time-btn selected" data-seconds="300"  onclick="selectOnlineTime(this,300)">5 daq</button>
+      <button class="time-btn"          data-seconds="600"  onclick="selectOnlineTime(this,600)">10 daq</button>
+      <button class="time-btn"          data-seconds="900"  onclick="selectOnlineTime(this,900)">15 daq</button>
+      <button class="time-btn"          data-seconds="1800" onclick="selectOnlineTime(this,1800)">30 daq</button>
+      <button class="time-btn unlimited" data-seconds="0"   onclick="selectOnlineTime(this,0)" data-i18n="unlimited">∞ Cheksiz</button>
+    </div>
     <button class="create-btn" onclick="createRoom()" data-i18n="createRoom">Xona yaratish</button>
     <div id="myRoomCode" style="display:none;">
       <div style="font-size:.8rem;color:var(--muted);" data-i18n="yourCode">Kodingiz:</div>
@@ -717,6 +732,10 @@ let lastMove = null;
 let startTime = null;
 let moveCount = 0;
 
+// Online setup (host tanlovi)
+let onlineColor = 'w';
+let onlineTimeSeconds = 300; // default 5 daqiqa
+
 // Timers
 let selectedTimeSeconds = 60; // default 1 daqiqa
 let playerSeconds = 60;
@@ -773,7 +792,19 @@ function selectColor(c){
 
 function selectTime(btn, secs){
   selectedTimeSeconds = secs;
-  document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#timeGrid .time-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function selectOnlineColor(c){
+  onlineColor = c;
+  document.getElementById('oColorW').classList.toggle('selected', c==='w');
+  document.getElementById('oColorB').classList.toggle('selected', c==='b');
+}
+
+function selectOnlineTime(btn, secs){
+  onlineTimeSeconds = secs;
+  document.querySelectorAll('#oTimeGrid .time-btn').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
 }
 
@@ -1397,7 +1428,8 @@ function createRoom(){
   }
   roomCode = generateRoomCode();
   myRole = 'player1';
-  playerColor = 'w';
+  playerColor = onlineColor;
+  selectedTimeSeconds = onlineTimeSeconds;
 
   document.getElementById('roomCodeDisplay').textContent = roomCode;
   document.getElementById('myRoomCode').style.display='block';
@@ -1409,8 +1441,10 @@ function createRoom(){
     player2: null,
     status: 'waiting',
     lastMove: null,
-    p1Time: 300,
-    p2Time: 300
+    hostColor: onlineColor,
+    timeSeconds: onlineTimeSeconds,
+    p1Time: onlineTimeSeconds,
+    p2Time: onlineTimeSeconds
   };
 
   db.ref('games/'+roomCode).set(gameData);
@@ -1440,6 +1474,12 @@ function joinRoom(){
     const data = snap.val();
     if(!data){ uiAlert(t('roomNotFound')+': '+code); roomCode=null; myRole=null; return; }
     if(data.status!=='waiting' && data.status!=='playing'){ uiAlert(t('roomBusy')); roomCode=null; myRole=null; return; }
+    const hc = data.hostColor || 'w';
+    playerColor = hc==='w' ? 'b' : 'w';
+    const ts = (data.timeSeconds!=null) ? data.timeSeconds : 300;
+    selectedTimeSeconds = ts;
+    playerSeconds = ts;
+    opponentSeconds = ts;
     db.ref('games/'+roomCode+'/player2').set('connected');
     db.ref('games/'+roomCode+'/status').set('playing');
     setupPresence();
@@ -1455,8 +1495,8 @@ function joinRoom(){
 function startOnlineGame(){
   gameMode = 'online';
   game = new Chess();
-  playerSeconds = 300;
-  opponentSeconds = 300;
+  playerSeconds = selectedTimeSeconds;
+  opponentSeconds = selectedTimeSeconds;
   selectedSq = null;
   possibleMoves = [];
   lastMove = null;
