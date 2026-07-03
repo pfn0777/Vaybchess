@@ -369,7 +369,7 @@ function showTab(tab){
   document.getElementById('nav-progress').classList.toggle('active',tab==='progress');
   if(tab==='daily') renderDaily();
   if(tab==='levels') renderLevels();
-  if(tab==='progress') renderProgress();
+  if(tab==='progress'){ renderProgress(); if(!PACKS) loadPacks(function(){ if(currentTab==='progress') renderProgress(); }); }
   if(tab==='shop'){ renderShop(); if(!PACKS) loadPacks(function(){ if(currentTab==='shop') renderShop(); }); }
   document.querySelector('.app').scrollTop=0;
 }
@@ -493,8 +493,10 @@ function renderLevels(){
 
 // ============================================================ PROGRESS
 function renderProgress(){
-  const totalSolved=['easy','medium','hard'].reduce((a,d)=>a+solvedCount(d),0);
-  const totalAll=TOTALS.easy+TOTALS.medium+TOTALS.hard;
+  const baseSolved=['easy','medium','hard'].reduce((a,d)=>a+solvedCount(d),0);
+  const packSc=packsSolvedTotal(), packTot=packsAllTotal();
+  const totalSolved=baseSolved+packSc;
+  const totalAll=TOTALS.easy+TOTALS.medium+TOTALS.hard+packTot;
   const level=1000 + totalSolved*3;
   let html='<div class="card"><div class="stat-head">'+
     '<div class="stat-block"><div class="lbl">'+t('levelCap')+'</div><div class="val">'+level+'</div></div>'+
@@ -512,6 +514,12 @@ function renderProgress(){
       '<div class="diff-right"><div class="cap">'+t('levelCap')+'</div><div class="lvl">'+r.lvl+'</div></div>'+
       '</div>';
   });
+  const packPct=packTot?Math.round(packSc/packTot*100):0;
+  html+='<div class="diff-row static">'+
+    '<div class="diff-check">✓</div>'+
+    '<div class="diff-info"><div class="diff-name">'+t('shop')+'</div><div class="diff-meta">'+packSc+' / '+packTot+' '+t('puzzlesWord')+'</div></div>'+
+    '<div class="diff-right"><div class="cap">'+t('solvedCap')+'</div><div class="pct">'+packPct+'%</div></div>'+
+    '</div>';
   html+='</div>';
   document.getElementById('progressScreen').innerHTML=html;
 }
@@ -532,6 +540,8 @@ function packSolved(i){
   const pool=PACKS&&PACKS[i]; if(!pool) return 0;
   return pool.filter(p=>solvedSet.has(p.id)).length;
 }
+function packsSolvedTotal(){ if(!PACKS) return 0; return SHOP_PACKS.reduce((a,_,i)=>a+packSolved(i),0); }
+function packsAllTotal(){ if(!PACKS) return SHOP_PACKS.reduce((a,p)=>a+p.n,0); return SHOP_PACKS.reduce((a,_,i)=>a+((PACKS[i]&&PACKS[i].length)||0),0); }
 function renderShop(){
   let h='<div class="daily-banner"><div class="dh">'+t('premiumOn')+'</div>'+
     '<div class="ds">'+t('practiceLevels')+'</div></div>';
