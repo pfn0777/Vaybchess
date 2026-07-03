@@ -335,9 +335,6 @@ body{
   <button class="menu-btn" onclick="showScreen('onlineScreen')">
     <span>👥</span><span data-i18n="playOnline">Online o'ynash</span>
   </button>
-  <button class="menu-btn" onclick="location.href='puzzles.html'">
-    <span>🧩</span><span data-i18n="puzzles">Shaxmat mashqlari</span>
-  </button>
   <div class="lang-row">
     <button class="lang-btn" onclick="setLang('uz')">UZ</button>
     <button class="lang-btn" onclick="setLang('ru')">RU</button>
@@ -743,13 +740,13 @@ let onlineConnected = false;
 // Stockfish 'go depth D movetime T' da qaysi chegara avval kelsa, o'sha to'xtatadi —
 // shu sabab AI hech qachon ko'p o'ylab qolmaydi (oldin 'go depth 15' 10-30s ketardi).
 const eloConfigs = {
-  500:  { skill: 0,  movetime: 150,  depth: 5,  rand: .30 },
-  800:  { skill: 2,  movetime: 250,  depth: 6,  rand: .15 },
-  1000: { skill: 5,  movetime: 400,  depth: 8,  rand: .06 },
-  1200: { skill: 8,  movetime: 600,  depth: 10, rand: .02 },
-  1400: { skill: 12, movetime: 900,  depth: 14, rand: 0   },
-  1600: { skill: 16, movetime: 1300, depth: 18, rand: 0   },
-  1800: { skill: 20, movetime: 2000, depth: 22, rand: 0   }
+  500:  { skill: 0,  movetime: 120,  depth: 4,  rand: .40 },
+  800:  { skill: 1,  movetime: 200,  depth: 5,  rand: .25 },
+  1000: { skill: 3,  movetime: 300,  depth: 7,  rand: .12 },
+  1200: { skill: 6,  movetime: 500,  depth: 9,  rand: .05 },
+  1400: { skill: 9,  movetime: 700,  depth: 12, rand: .02 },
+  1600: { skill: 13, movetime: 1000, depth: 15, rand: 0   },
+  1800: { skill: 17, movetime: 1500, depth: 18, rand: 0   }
 };
 let selectedElo = parseInt(localStorage.getItem('vayb_elo')) || 1000;
 if(!eloConfigs[selectedElo]) selectedElo = 1000;
