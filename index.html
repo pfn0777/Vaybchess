@@ -122,7 +122,10 @@ try{
   let sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
            new URLSearchParams(location.search).get('tgWebAppStartParam') || '';
   sp = sp.trim().toUpperCase();
-  if(/^[A-Z2-9]{6}$/.test(sp)){
+  const checkersMatch = sp.match(/^C([A-Z0-9]{6})$/); // 'C' prefix = checkers room
+  if(checkersMatch){
+    location.replace('checkers.html?tgWebAppStartParam=' + checkersMatch[1]);
+  } else if(/^[A-Z2-9]{6}$/.test(sp)){
     location.replace('chess.html?tgWebAppStartParam=' + sp);
   }
 }catch(e){}

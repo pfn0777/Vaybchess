@@ -433,7 +433,8 @@ function handleTgBack(){
 
 function shareRoom(){
   if(!onlineRoomCode) return;
-  const url = location.origin + location.pathname;
+  // Deep-link like chess: 'C' prefix marks this as a checkers room so index.html routes here.
+  const url = 'https://t.me/vaybchess_bot/play?startapp=C' + onlineRoomCode;
   const text = T.inviteText.replace('{code}', onlineRoomCode);
   const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
   if(tg && tg.openTelegramLink){ try{ tg.openTelegramLink(shareUrl); return; }catch(e){} }
@@ -1528,6 +1529,18 @@ document.getElementById('toggleSound').classList.toggle('on', soundOn);
 document.getElementById('toggleCoords').classList.toggle('on', showCoords);
 // Prevent board appearing before game starts
 document.getElementById('board').style.minHeight = 'calc(var(--sq-size) * 8)';
+// Auto-join: share havola orqali kelgan bo'lsa (t.me/vaybchess_bot/play?startapp=C<KOD>)
+try{
+  let sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+           new URLSearchParams(location.search).get('tgWebAppStartParam') || '';
+  sp = sp.trim().toUpperCase();
+  if(sp.charAt(0)==='C' && sp.length===7) sp = sp.slice(1); // strip optional checkers marker
+  if(/^[A-Z0-9]{6}$/.test(sp)){
+    showScreen('onlineScreen');
+    document.getElementById('joinCodeInput').value = sp;
+    joinRoom();
+  }
+}catch(e){}
 </script>
 </body>
 </html>
