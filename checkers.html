@@ -176,7 +176,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-se
       <button class="opt-btn" id="colBlack" onclick="selectColor('black')">⬤ <span id="txBlack">Qora</span></button>
     </div>
   </div>
-  <button class="play-btn" onclick="showScreen('timeScreen')" id="btnNext">Keyingisi →</button>
+  <button class="play-btn" onclick="startAIGame()" id="btnNext">O'ynash</button>
 </div>
 
 <!-- TIME SCREEN -->
@@ -472,7 +472,7 @@ function applyTranslations(){
   document.getElementById('txChooseTime').textContent = T.chooseTime;
   document.getElementById('t0').textContent = T.unlimited;
   document.getElementById('btnPlay').textContent = T.play;
-  document.getElementById('btnNext').textContent = T.next;
+  document.getElementById('btnNext').textContent = T.play;
   document.getElementById('abSettings').textContent = T.settings;
   document.getElementById('abResign').textContent = T.resign;
   document.getElementById('abHint').textContent = T.hint;
@@ -999,19 +999,10 @@ function countPieces(b,color){
 
 // ===================== TIMER =====================
 function startTimer(){
+  // Time limit removed: checkers is always unlimited (no clock, no timeout loss).
   if(timerInterval) clearInterval(timerInterval);
-  if(selectedTime===0){
-    document.getElementById('topTimer').textContent='∞';
-    document.getElementById('botTimer').textContent='∞';
-    return;
-  }
-  whiteTime = selectedTime*60;
-  blackTime = selectedTime*60;
-  const myT = playerColor==='white'?whiteTime:blackTime;
-  const opT = playerColor==='white'?blackTime:whiteTime;
-  document.getElementById('topTimer').textContent = fmtTime(opT);
-  document.getElementById('botTimer').textContent = fmtTime(myT);
-  timerInterval=setInterval(tickTimer,1000);
+  document.getElementById('topTimer').textContent='∞';
+  document.getElementById('botTimer').textContent='∞';
 }
 
 function tickTimer(){
