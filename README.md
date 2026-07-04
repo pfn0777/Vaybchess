@@ -44,18 +44,14 @@ Hozir RTDB ochiq. Minimal cheklov uchun Firebase Console â†’ Realtime Database â
 ```json
 {
   "rules": {
-    "games": {
-      "$code": {
-        ".read": true,
+    "games":    { "$code": { ".read": true, ".write": true } },
+    "checkers": { "$code": { ".read": true, ".write": true } },
+    "stats":    { "$g": { ".read": true, ".write": "newData.isNumber() && (!data.exists() || newData.val() === data.val()+1)" } },
+    "users": {
+      ".read": true,
+      "$id": {
         ".write": true,
-        ".validate": "newData.hasChildren(['status'])"
-      }
-    },
-    "checkers": {
-      "$code": {
-        ".read": true,
-        ".write": true,
-        ".validate": "newData.hasChildren(['status'])"
+        "premium": { ".write": "false" }
       }
     },
     "$other": { ".read": false, ".write": false }
@@ -63,7 +59,7 @@ Hozir RTDB ochiq. Minimal cheklov uchun Firebase Console â†’ Realtime Database â
 }
 ```
 
-Bu boshqa yo'llarga yozishni bloklaydi. To'liq xavfsizlik uchun keyingi versiyada Telegram initData tekshiruvi bilan backend kerak bo'ladi.
+`premium: { ".write": "false" }` klientdan premium yozishni bloklaydi (to'lov chetlab o'tishni yopadi) â€” premium'ni faqat bot privileged token bilan yozadi. `users` o'qish hozircha ochiq (PII); to'liq himoya uchun keyingi versiyada Firebase Anonymous Auth yoki backend kerak. Batafsil: `docs/specs/security-audit.md`.
 
 ## Texnik eslatmalar
 

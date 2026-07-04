@@ -40,10 +40,9 @@ h1{font-size:22px;margin-bottom:14px;}
 
 <script>
 // O'z Telegram numeric ID'ngizni shu yerga qo'shing (masalan @userinfobot orqali oling).
+// Faqat shu ID'li Telegram foydalanuvchi admin panelni ko'radi (UI-gate).
+// XAVFSIZLIK: bu yerga hech qachon parol/maxfiy kalit yozmang — publik deploy'da ko'rinadi.
 const ADMIN_IDS = [8264870741];
-// Brauzerdan kirish uchun maxfiy so'z. Sahifa ochilganda prompt() orqali so'raladi.
-// MUHIM: bu so'zni o'zingizniki bilan almashtiring va hech kimga bermang.
-const ADMIN_KEY = "admin0777";
 
 const tg = window.Telegram && window.Telegram.WebApp;
 try{ tg && tg.ready(); tg && tg.expand(); }catch(e){}
@@ -76,33 +75,10 @@ function gate(msg){
 }
 
 function isAdmin(){
-  if(myId && ADMIN_IDS.indexOf(Number(myId))>=0) return true; // Telegram ID
-  if(ADMIN_KEY && sessionStorage.getItem('ak')===ADMIN_KEY) return true; // saqlangan kalit
-  if(!ADMIN_IDS.length && !ADMIN_KEY) return true; // hech narsa sozlanmagan — dev
+  if(myId && ADMIN_IDS.indexOf(Number(myId))>=0) return true; // Telegram ID allowlist
+  if(!ADMIN_IDS.length) return true; // hech narsa sozlanmagan — dev
   return false;
 }
-function showLogin(err){
-  document.getElementById('app').innerHTML =
-    '<div class="gate"><div class="big">🔒</div>'+
-    '<div style="margin-bottom:14px;">Admin kirish</div>'+
-    '<input class="search" id="akInput" type="password" autocomplete="off" '+
-      'placeholder="Admin kaliti" style="max-width:260px;margin:0 auto 10px;display:block;">'+
-    '<button class="pbtn on" id="akBtn" style="padding:10px 22px;">Kirish</button>'+
-    (err?'<div class="muted" style="margin-top:10px;font-size:13px;">'+esc(err)+'</div>':'')+
-    '</div>';
-  document.getElementById('akInput').focus();
-}
-function submitKey(){
-  const v=(document.getElementById('akInput').value||'').trim();
-  if(v===ADMIN_KEY){ sessionStorage.setItem('ak',ADMIN_KEY); load(); }
-  else showLogin('Kalit noto\'g\'ri');
-}
-document.addEventListener('click',function(e){
-  if(e.target && e.target.id==='akBtn') submitKey();
-});
-document.addEventListener('keydown',function(e){
-  if(e.key==='Enter' && e.target && e.target.id==='akInput') submitKey();
-});
 
 function fmtDate(ts){
   if(!ts) return '—';
@@ -192,8 +168,7 @@ function togglePremium(id, cur){
 
 function load(){
   if(!isAdmin()){
-    if(ADMIN_KEY && !(myId)) { showLogin(''); return; } // brauzer — parol formasi
-    gate('Bu sahifa faqat admin uchun.'); return; // Telegram, lekin admin emas
+    gate('Bu sahifa faqat admin uchun.'); return; // faqat ADMIN_IDS ruxsat
   }
   const d=db();
   if(!d){ gate('Firebase ulanmadi.'); return; }

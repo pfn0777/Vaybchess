@@ -55,9 +55,12 @@
     d.ref('users/' + String(u.id) + '/premium').once('value', function(snap){
       cb(snap.val() === true);
     }, function(err){
-      // Read failed (permission/network). Don't lock out a paid user: fall back to cached unlock.
+      // Read failed (permission/network). Secure default: premium OFF.
+      // Never trust a client-writable localStorage flag to unlock paid content —
+      // that is a payment bypass. Revisit only when Telegram Stars backend ships
+      // and premium is confirmed server-side (bot writes users/{id}/premium).
       console.warn('[vayb] premium read failed:', err && err.message);
-      cb(localStorage.getItem('vayb_packs_unlocked') === '1');
+      cb(false);
     });
   };
 })();
