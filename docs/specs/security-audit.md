@@ -116,17 +116,21 @@ Savdo: Stars to'lov boti kelguncha `admin.html`dagi qo'lda "Premium ber" toggle 
     "users": {
       ".read": true,
       "$id": {
-        ".write": true,
-        "premium": { ".write": "false" }
+        ".write": "newData.child('premium').val() === data.child('premium').val()"
       }
     },
     "$other": { ".read": false, ".write": false }
   }
 }
 ```
-> Eslatma: `premium: { ".write": "false" }` — klient premium yozuvini bloklaydi (bot privileged
-> token bilan chetlab o'tadi). `users` `.read: true` — PII hozircha ochiq; to'liq himoya uchun
-> keyingi bosqichda Firebase Anonymous Auth yoqib `.read`ni `auth != null`ga o'tkazish kerak.
+> Eslatma: `$id` dagi shartli `.write` (`newData.child('premium').val() === data.child('premium').val()`)
+> — premium yozuvdan oldingi va keyingi qiymati bir xil bo'lsagina ruxsat beradi, ya'ni klient
+> premium'ni yarata/o'zgartira olmaydi (bot privileged token bilan chetlab o'tadi). MUHIM: RTDB
+> kaskad qoidasi tufayli `$id`da `.write: true` qo'yib pastda `premium: {".write":"false"}` bilan
+> bekor qilib BO'LMAYDI — yuqoridagi `true` premium'ga ham tarqaladi (bu dastlabki Variant A xatosi
+> edi, `curl -X PUT .../users/TEST/premium.json -d true` → 200 bilan tasdiqlandi). `users` `.read: true`
+> — PII hozircha ochiq; to'liq himoya uchun keyingi bosqichda Firebase Anonymous Auth yoqib `.read`ni
+> `auth != null`ga o'tkazish kerak.
 
 ## Mendan kerak (egasidan) — qaror talab qiladi
 1. **Admin o'qish qanday himoyalansin?** (a) Firebase Anonymous Auth + admin ID rules, yoki

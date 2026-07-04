@@ -50,8 +50,7 @@ Hozir RTDB ochiq. Minimal cheklov uchun Firebase Console → Realtime Database �
     "users": {
       ".read": true,
       "$id": {
-        ".write": true,
-        "premium": { ".write": "false" }
+        ".write": "newData.child('premium').val() === data.child('premium').val()"
       }
     },
     "$other": { ".read": false, ".write": false }
@@ -59,7 +58,7 @@ Hozir RTDB ochiq. Minimal cheklov uchun Firebase Console → Realtime Database �
 }
 ```
 
-`premium: { ".write": "false" }` klientdan premium yozishni bloklaydi (to'lov chetlab o'tishni yopadi) — premium'ni faqat bot privileged token bilan yozadi. `users` o'qish hozircha ochiq (PII); to'liq himoya uchun keyingi versiyada Firebase Anonymous Auth yoki backend kerak. Batafsil: `docs/specs/security-audit.md`.
+`$id` dagi shartli `.write` (premium yozuvdan oldingi va keyingi qiymati bir xil bo'lsagina ruxsat) klientdan premium yozishni bloklaydi (to'lov chetlab o'tishni yopadi). Diqqat: RTDB kaskad qoidasi tufayli `$id`da `.write: true` qo'yib, pastda `premium: {".write":"false"}` bilan bekor qilib bo'lmaydi — yuqoridagi `true` premium'ga ham tarqaladi. Premium'ni faqat bot privileged token bilan yozadi. `users` o'qish hozircha ochiq (PII); to'liq himoya uchun keyingi versiyada Firebase Anonymous Auth yoki backend kerak. Batafsil: `docs/specs/security-audit.md`.
 
 ## Texnik eslatmalar
 
