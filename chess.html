@@ -622,6 +622,25 @@ function _audio(){
   if(_ac && _ac.state==='suspended'){ try{ _ac.resume(); }catch(e){} }
   return _ac;
 }
+let _noiseBuf = null;
+function _noise(dur, delay, filterFreq, q, vol){
+  const ac=_audio(); if(!ac) return;
+  delay=delay||0; vol=vol||.15;
+  if(!_noiseBuf){
+    _noiseBuf = ac.createBuffer(1, ac.sampleRate*0.2, ac.sampleRate);
+    const d=_noiseBuf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  }
+  const src=ac.createBufferSource(); src.buffer=_noiseBuf;
+  const bp=ac.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.value=filterFreq||600; bp.Q.value=q||3;
+  const g=ac.createGain();
+  g.gain.setValueAtTime(0.0001, ac.currentTime+delay);
+  g.gain.linearRampToValueAtTime(vol, ac.currentTime+delay+.003);
+  g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime+delay+dur);
+  src.connect(bp); bp.connect(g); g.connect(ac.destination);
+  src.start(ac.currentTime+delay); src.stop(ac.currentTime+delay+dur+.05);
+}
 function _tone(freq, dur, delay, type, vol){
   const ac=_audio(); if(!ac) return;
   delay=delay||0; type=type||'sine'; vol=vol||.15;
@@ -636,8 +655,8 @@ function _tone(freq, dur, delay, type, vol){
 function playSnd(kind){
   if(!soundOn) return;
   switch(kind){
-    case 'move':    _tone(260,.08,0,'sine',.12); break;
-    case 'capture': _tone(330,.07); _tone(200,.1,.06); break;
+    case 'move':    _noise(.05,0,620,3,.18); _tone(165,.06,0,'triangle',.10); break;
+    case 'capture': _noise(.06,0,500,2.5,.22); _tone(140,.07,0,'triangle',.12); break;
     case 'check':   _tone(660,.12,0,'square',.07); break;
     case 'win':     [523,659,784,1047].forEach((f,i)=>_tone(f,.18,i*.12,'triangle',.13)); break;
     case 'lose':    [392,330,262,196].forEach((f,i)=>_tone(f,.2,i*.14,'sine',.11)); break;
