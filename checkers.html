@@ -538,12 +538,12 @@ let gameActive = false;
 // Har daraja uchun:
 //   maxDepth   = iterativ chuqurlashtirish yuqori chegarasi
 //   maxTime    = bitta yurishga ajratilgan vaqt (ms) — qidiruvni CHEGARALAYDI (muzlash yo'q)
-//   randomness = eng yaxshi o'rniga top-N dan tasodifiy tanlash ehtimoli (Easy xato qiladi)
-//   topN       = nechta eng yaxshi yurish orasidan tanlanadi
+//   blunder    = zaif yurish ehtimoli (Easy ko'p xato qiladi — boshlovchi yutishi mumkin)
+//   pool       = zaif tanlov havzasi: 'all' = barcha qonuniy yurish, aks holda top-N soni
 let aiLevels = {
-  easy:   { maxDepth: 3,  maxTime: 200,  randomness: .35, topN: 3 },
-  medium: { maxDepth: 6,  maxTime: 600,  randomness: .08, topN: 2 },
-  hard:   { maxDepth: 12, maxTime: 1200, randomness: 0,   topN: 1 }
+  easy:   { maxDepth: 2,  maxTime: 300,  blunder: 0.45, pool: 'all' },
+  medium: { maxDepth: 6,  maxTime: 700,  blunder: 0.12, pool: 3    },
+  hard:   { maxDepth: 14, maxTime: 1600, blunder: 0,    pool: 1    }
 };
 let noCaptureCount = 0; // durang qoidasi: 60 yarim-yurish (30 yurish) olishsiz
 
@@ -1115,7 +1115,7 @@ function orderMoves(b, moves, color){
 }
 
 // Iterativ chuqurlashtirish + vaqt byudjeti.
-// cfg: {maxDepth, maxTime, randomness, topN}
+// cfg: {maxDepth, maxTime, blunder, pool}
 function getBestMove(b, color, cfg){
   let moves = getAllMovesForColor(b,color);
   if(moves.length===0) return null;
@@ -1148,14 +1148,13 @@ function getBestMove(b, color, cfg){
 
 function pickMove(scored, cfg){
   if(scored.length===0) return null;
-  const bestVal = scored[0].val;
-  // randomness ehtimoli bilan top-N orasidan tasodifiy (zaif) yurish
-  if(cfg.randomness>0 && Math.random()<cfg.randomness){
-    const pool = scored.slice(0, Math.min(cfg.topN, scored.length));
+  // Blunder: boshlang'ichdek zaif yurish — 'all' bo'lsa BARCHA qonuniy yurishdan, aks holda top-N dan
+  if(cfg.blunder>0 && Math.random()<cfg.blunder){
+    const pool = (cfg.pool==='all') ? scored : scored.slice(0, Math.min(cfg.pool, scored.length));
     return pool[Math.floor(Math.random()*pool.length)].m;
   }
   // Aks holda eng yaxshi baholilar orasidan tasodifiy (variativlik — har o'yin boshqacha)
-  const EPS = 1e-6;
+  const bestVal = scored[0].val, EPS = 1e-6;
   const top = scored.filter(s=>Math.abs(s.val-bestVal)<EPS);
   return top[Math.floor(Math.random()*top.length)].m;
 }
