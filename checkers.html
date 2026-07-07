@@ -542,8 +542,8 @@ let gameActive = false;
 //   pool       = zaif tanlov havzasi: 'all' = barcha qonuniy yurish, aks holda top-N soni
 let aiLevels = {
   easy:   { maxDepth: 2,  maxTime: 300,  blunder: 0.45, pool: 'all' },
-  medium: { maxDepth: 6,  maxTime: 700,  blunder: 0.12, pool: 3    },
-  hard:   { maxDepth: 14, maxTime: 1600, blunder: 0,    pool: 1    }
+  medium: { maxDepth: 8,  maxTime: 1000, blunder: 0.10, pool: 3    },
+  hard:   { maxDepth: 16, maxTime: 2500, blunder: 0,    pool: 1    }
 };
 let noCaptureCount = 0; // durang qoidasi: 60 yarim-yurish (30 yurish) olishsiz
 
@@ -823,6 +823,40 @@ function getContinuationCaptures(b, color, r, c, visitedCaps){
     }
   }
   return result;
+}
+
+// Qidiruv uchun: to'liq ko'p-olish zanjirlarini bitta atomik yurishga yig'adi.
+// (executeMove+getContinuationCaptures semantikasi: olingan shashka darrov olib tashlanadi)
+function getCaptureChains(b, color, fromR, fromC){
+  const steps = getCaptures(b, color, fromR, fromC); // bitta sakrashlar
+  if(steps.length===0) return [];
+  const chains=[];
+  for(const s of steps){
+    const nb = b.map(r=>r.map(c=>c?{...c}:null));
+    const moved = nb[fromR][fromC];
+    nb[s.row][s.col]=moved; nb[fromR][fromC]=null;
+    nb[s.captures[0].row][s.captures[0].col]=null;
+    const promotes = !moved.king && ((color==='white'&&s.row===0)||(color==='black'&&s.row===7));
+    if(promotes){ chains.push({row:s.row,col:s.col,captures:[s.captures[0]]}); continue; }
+    const cont = getCaptureChains(nb, color, s.row, s.col);
+    if(cont.length===0) chains.push({row:s.row,col:s.col,captures:[s.captures[0]]});
+    else for(const cc of cont) chains.push({row:cc.row,col:cc.col,captures:[s.captures[0],...cc.captures]});
+  }
+  return chains;
+}
+
+// getAllMovesForColor kabi, lekin olishlar to'liq zanjir sifatida (faqat AI qidiruvi ishlatadi)
+function getSearchMoves(b, color){
+  const captures=[], normals=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=b[r][c];
+    if(p&&p.color===color){
+      const ch=getCaptureChains(b,color,r,c);
+      if(ch.length) captures.push(...ch.map(m=>({...m,fromRow:r,fromCol:c})));
+      else { const mv=getMoves(b,color,r,c); normals.push(...mv.map(m=>({...m,fromRow:r,fromCol:c}))); }
+    }
+  }
+  return captures.length>0?captures:normals;
 }
 
 // ===================== APPLY MOVE =====================
@@ -1132,7 +1166,7 @@ function orderMoves(b, moves, color){
 // Iterativ chuqurlashtirish + vaqt byudjeti.
 // cfg: {maxDepth, maxTime, blunder, pool}
 function getBestMove(b, color, cfg){
-  let moves = getAllMovesForColor(b,color);
+  let moves = getSearchMoves(b,color);
   if(moves.length===0) return null;
   if(moves.length===1) return moves[0];        // majburiy yurish — qidirmaymiz
 
@@ -1179,10 +1213,9 @@ function minimax(b, depth, alpha, beta, isMax, aiColor, deadline){
   if(deadline && Date.now()>deadline) return SEARCH_ABORT;
   const enemy = aiColor==='white'?'black':'white';
   const curColor = isMax?aiColor:enemy;
-  const moves = getAllMovesForColor(b,curColor);
-  if(depth===0||moves.length===0){
-    return evaluate(b,aiColor);
-  }
+  const moves = getSearchMoves(b,curColor);
+  if(moves.length===0) return curColor===aiColor ? -1000 - depth : 1000 + depth; // yurishi yo'q → yutqazadi
+  if(depth===0) return evaluate(b,aiColor);
   if(isMax){
     let val=-Infinity;
     for(const m of moves){
@@ -1216,11 +1249,11 @@ function evaluate(b, aiColor){
       const p=b[r][c];
       if(!p) continue;
       const isAI=p.color===aiColor;
-      let val=1+(p.king?0.5:0);
+      let val=p.king?1.75:1.0;
       // Center bonus
-      const centerBonus=([3,4].includes(r)&&[3,4].includes(c))?0.15:0;
+      const centerBonus=([3,4].includes(r)&&[3,4].includes(c))?0.12:0;
       // Back row protection
-      const backBonus=(p.color==='white'&&r===7||p.color==='black'&&r===0)?0.1:0;
+      const backBonus=(p.color==='white'&&r===7||p.color==='black'&&r===0)?0.12:0;
       // Advancement bonus for non-kings
       if(!p.king){
         const adv=p.color==='white'?(7-r)/7:r/7;
