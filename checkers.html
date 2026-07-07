@@ -859,6 +859,19 @@ function getSearchMoves(b, color){
   return captures.length>0?captures:normals;
 }
 
+// Faqat olish-zanjirlari (quiescence uchun)
+function getCaptureMoves(b, color){
+  const caps=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=b[r][c];
+    if(p&&p.color===color){
+      const ch=getCaptureChains(b,color,r,c);
+      if(ch.length) caps.push(...ch.map(m=>({...m,fromRow:r,fromCol:c})));
+    }
+  }
+  return caps;
+}
+
 // ===================== APPLY MOVE =====================
 function applyMove(b, move){
   const newBoard = b.map(r=>r.map(c=>c?{...c}:null));
@@ -1208,6 +1221,31 @@ function pickMove(scored, cfg){
   return top[Math.floor(Math.random()*top.length)].m;
 }
 
+// Quiescence: bargda majburiy olish qolgan bo'lsa oxirigacha hal qiladi (gorizont effektiga qarshi)
+function quiesce(b, alpha, beta, isMax, aiColor, deadline, qd){
+  if(deadline && Date.now()>deadline) return SEARCH_ABORT;
+  const curColor = isMax ? aiColor : (aiColor==='white'?'black':'white');
+  const caps = getCaptureMoves(b, curColor);
+  if(caps.length===0 || qd<=0) return evaluate(b, aiColor); // tinch → statik baho
+  if(isMax){
+    let val=-Infinity;
+    for(const m of caps){
+      const r=quiesce(applyMove(b,m), alpha, beta, false, aiColor, deadline, qd-1);
+      if(r===SEARCH_ABORT) return SEARCH_ABORT;
+      val=Math.max(val,r); alpha=Math.max(alpha,val); if(beta<=alpha) break;
+    }
+    return val;
+  } else {
+    let val=Infinity;
+    for(const m of caps){
+      const r=quiesce(applyMove(b,m), alpha, beta, true, aiColor, deadline, qd-1);
+      if(r===SEARCH_ABORT) return SEARCH_ABORT;
+      val=Math.min(val,r); beta=Math.min(beta,val); if(beta<=alpha) break;
+    }
+    return val;
+  }
+}
+
 // deadline berilsa va vaqt tugasa SEARCH_ABORT qaytaradi (yuqoriga tarqaladi)
 function minimax(b, depth, alpha, beta, isMax, aiColor, deadline){
   if(deadline && Date.now()>deadline) return SEARCH_ABORT;
@@ -1215,7 +1253,7 @@ function minimax(b, depth, alpha, beta, isMax, aiColor, deadline){
   const curColor = isMax?aiColor:enemy;
   const moves = getSearchMoves(b,curColor);
   if(moves.length===0) return curColor===aiColor ? -1000 - depth : 1000 + depth; // yurishi yo'q → yutqazadi
-  if(depth===0) return evaluate(b,aiColor);
+  if(depth===0) return quiesce(b, alpha, beta, isMax, aiColor, deadline, 8);
   if(isMax){
     let val=-Infinity;
     for(const m of moves){
@@ -1254,10 +1292,13 @@ function evaluate(b, aiColor){
       const centerBonus=([3,4].includes(r)&&[3,4].includes(c))?0.12:0;
       // Back row protection
       const backBonus=(p.color==='white'&&r===7||p.color==='black'&&r===0)?0.12:0;
-      // Advancement bonus for non-kings
       if(!p.king){
         const adv=p.color==='white'?(7-r)/7:r/7;
         val+=adv*0.2;
+        if(c===0||c===7) val+=0.05;           // chekka shashka olinmaydi — kichik bonus
+      } else {
+        const dr=Math.min(r,7-r), dc=Math.min(c,7-c);
+        val+=(dr+dc)*0.03;                     // shoh markazga yaqin — mobil, kuchli
       }
       val+=centerBonus+backBonus;
       score+=isAI?val:-val;
