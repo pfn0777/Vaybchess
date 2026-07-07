@@ -1163,6 +1163,18 @@ function aiContinueJump(){
 // Qidiruv vaqt tugaganini bildiruvchi maxsus signal
 const SEARCH_ABORT = {abort:true};
 
+// Transpozitsiya jadvali (har getBestMove'da tozalanadi)
+let TT = null;
+const TT_EXACT=0, TT_LOWER=1, TT_UPPER=2;
+function boardKey(b, isMax){
+  let s = isMax ? '1' : '0';
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=b[r][c];
+    s += !p ? '.' : (p.color==='white' ? (p.king?'W':'w') : (p.king?'B':'b'));
+  }
+  return s;
+}
+
 // Yurishlarni tartiblash — capture'lar va kuchli yurishlar avval (alpha-beta tezroq kesadi)
 function orderMoves(b, moves, color){
   return moves
@@ -1183,6 +1195,7 @@ function getBestMove(b, color, cfg){
   if(moves.length===0) return null;
   if(moves.length===1) return moves[0];        // majburiy yurish — qidirmaymiz
 
+  TT = new Map();                              // yangi qidiruv — jadval toza
   moves = orderMoves(b, moves, color);
   const deadline = Date.now() + cfg.maxTime;
   let scoredFinal = moves.map(m=>({m, val:0}));  // tugagan oxirgi chuqurlik natijasi
@@ -1251,47 +1264,84 @@ function minimax(b, depth, alpha, beta, isMax, aiColor, deadline){
   if(deadline && Date.now()>deadline) return SEARCH_ABORT;
   const enemy = aiColor==='white'?'black':'white';
   const curColor = isMax?aiColor:enemy;
-  const moves = getSearchMoves(b,curColor);
+
+  // TT probe
+  const alphaOrig=alpha, betaOrig=beta;
+  const key = boardKey(b, isMax);
+  const entry = TT.get(key);
+  if(entry && entry.depth>=depth){
+    if(entry.flag===TT_EXACT) return entry.value;
+    else if(entry.flag===TT_LOWER){ if(entry.value>alpha) alpha=entry.value; }
+    else if(entry.flag===TT_UPPER){ if(entry.value<beta) beta=entry.value; }
+    if(alpha>=beta) return entry.value;
+  }
+
+  let moves = getSearchMoves(b,curColor);
   if(moves.length===0) return curColor===aiColor ? -1000 - depth : 1000 + depth; // yurishi yo'q → yutqazadi
   if(depth===0) return quiesce(b, alpha, beta, isMax, aiColor, deadline, 8);
-  if(isMax){
-    let val=-Infinity;
-    for(const m of moves){
-      const nb=applyMove(b,m);
-      const r=minimax(nb,depth-1,alpha,beta,false,aiColor,deadline);
-      if(r===SEARCH_ABORT) return SEARCH_ABORT;
-      val=Math.max(val,r);
-      alpha=Math.max(alpha,val);
-      if(beta<=alpha) break;
+
+  // Arzon tartiblash: katta olishlar oldin, TT eng yaxshi yurish esa eng oldinga
+  if(moves.length>1){
+    moves.sort((a,z)=>((z.captures&&z.captures.length)||0)-((a.captures&&a.captures.length)||0));
+    const tb=entry&&entry.best;
+    if(tb){
+      const i=moves.findIndex(m=>m.fromRow===tb.fromRow&&m.fromCol===tb.fromCol&&m.row===tb.row&&m.col===tb.col);
+      if(i>0){ const [mv]=moves.splice(i,1); moves.unshift(mv); }
     }
-    return val;
-  } else {
-    let val=Infinity;
-    for(const m of moves){
-      const nb=applyMove(b,m);
-      const r=minimax(nb,depth-1,alpha,beta,true,aiColor,deadline);
-      if(r===SEARCH_ABORT) return SEARCH_ABORT;
-      val=Math.min(val,r);
-      beta=Math.min(beta,val);
-      if(beta<=alpha) break;
-    }
-    return val;
   }
+
+  let bestMove=null, val;
+  if(isMax){
+    val=-Infinity;
+    for(const m of moves){
+      const r=minimax(applyMove(b,m),depth-1,alpha,beta,false,aiColor,deadline);
+      if(r===SEARCH_ABORT) return SEARCH_ABORT;
+      if(r>val){ val=r; bestMove=m; }
+      if(val>alpha) alpha=val;
+      if(beta<=alpha) break;
+    }
+  } else {
+    val=Infinity;
+    for(const m of moves){
+      const r=minimax(applyMove(b,m),depth-1,alpha,beta,true,aiColor,deadline);
+      if(r===SEARCH_ABORT) return SEARCH_ABORT;
+      if(r<val){ val=r; bestMove=m; }
+      if(val<beta) beta=val;
+      if(beta<=alpha) break;
+    }
+  }
+
+  // TT store
+  let flag=TT_EXACT;
+  if(val<=alphaOrig) flag=TT_UPPER;
+  else if(val>=betaOrig) flag=TT_LOWER;
+  TT.set(key, {depth, value:val, flag, best:bestMove});
+  return val;
 }
 
 function evaluate(b, aiColor){
-  let score=0;
+  let score=0, aiN=0, enN=0;
   const enemy=aiColor==='white'?'black':'white';
   for(let r=0;r<8;r++){
     for(let c=0;c<8;c++){
       const p=b[r][c];
       if(!p) continue;
       const isAI=p.color===aiColor;
-      let val=p.king?1.75:1.0;
+      if(isAI) aiN++; else enN++;
+      let val=p.king?2.0:1.0;
       // Center bonus
       const centerBonus=([3,4].includes(r)&&[3,4].includes(c))?0.12:0;
       // Back row protection
       const backBonus=(p.color==='white'&&r===7||p.color==='black'&&r===0)?0.12:0;
+      // Mobillik: arzon — bo'sh diagonal qadam-katakchalari (capture-gen'siz)
+      let mob=0;
+      const stepDirs = p.king ? [[-1,-1],[-1,1],[1,-1],[1,1]]
+        : (p.color==='white' ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]]);
+      for(const [dr,dc] of stepDirs){
+        const nr=r+dr, nc=c+dc;
+        if(nr>=0&&nr<8&&nc>=0&&nc<8&&!b[nr][nc]) mob++;
+      }
+      val+=mob*0.02;
       if(!p.king){
         const adv=p.color==='white'?(7-r)/7:r/7;
         val+=adv*0.2;
@@ -1304,6 +1354,9 @@ function evaluate(b, aiColor){
       score+=isAI?val:-val;
     }
   }
+  // Trade-down: ustunlikda kam dona qolganda almashishga intil (g'alabaga aylantirish)
+  const total=aiN+enN;
+  score+=(aiN-enN)*(24-total)*0.015;
   return score;
 }
 
