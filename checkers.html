@@ -912,6 +912,7 @@ function executeMove(move){
       renderBoard();
       updateUI();
       if(gameMode==='online') syncOnlineState();
+      if(gameMode==='ai' && currentTurn===aiColor) aiContinueJump();
       return;
     }
   }
@@ -1096,6 +1097,20 @@ function doAIMove(){
       endGame(playerColor);
     }
   }, thinkTime);
+}
+
+// AI ko'p-olish (multi-jump) zanjirini o'zi davom ettiradi — aks holda navbat AIda qotib qoladi.
+function aiContinueJump(){
+  setTimeout(()=>{
+    if(!gameActive || currentTurn!==aiColor || !mustJumpFrom) return;
+    let best=possibleMoves[0], bestVal=-Infinity;
+    for(const pm of possibleMoves){
+      const mv={fromRow:mustJumpFrom.row, fromCol:mustJumpFrom.col, ...pm};
+      const val=evaluate(applyMove(board, mv), aiColor);
+      if(val>bestVal){ bestVal=val; best=pm; }
+    }
+    executeMove({fromRow:mustJumpFrom.row, fromCol:mustJumpFrom.col, ...best});
+  }, 300);
 }
 
 // Qidiruv vaqt tugaganini bildiruvchi maxsus signal
